@@ -3,7 +3,7 @@
  * Library: NodeJS
  * Author: Joshua Gross
  * Version: 0.1 alpha
- * Date: December 21, 2009
+ * Date: February 12, 2010
  *
  * Description:
  * A library for the Node.js server. It will authenticate a

@@ -3,7 +3,7 @@
  * Library: Default
  * Author: Joshua Gross
  * Version: 0.1 alpha
- * Date: December 21, 2009
+ * Date: February 12, 2010
  *
  * Description:
  * The default PHP-only server library. This library allows
@@ -92,32 +92,40 @@ class Default_IM extends IM {
     public function register($username, $password) {
         if(preg_match('/^[A-Za-z0-9_.]{3,16}$/', $username)) {
             if(strlen($password) > 3) {
-                // hash the password
-                $password = md5($password);
-                $pw_str = substr($password, 0, 8);
-                $password = $pw_str . md5($pw_str . $password);
-                
-                $register_sql = "INSERT INTO " . MYSQL_PREFIX . "users
-                    (username, password, last_known_ip)
-                    VALUES(:username, :password, :ip)";
                 $db = MySQL_Database::instance();
-                $register = $db->prepare($register_sql);
-                $is_registered = $register->execute(array(
-                    ':username' => $username,
-                    ':password' => $password,
-                    ':ip' => ip2long($_SERVER['REMOTE_ADDR'])
-                ));
-                
-                if($is_registered) {
-                    print json_encode(array('r' => 'registered'));
+                $test_username_sql = "SELECT COUNT(user_id) FROM " . MYSQL_PREFIX . "users
+                    WHERE username LIKE :username";
+                $test_username = $db->prepare($test_username_sql);
+                $test_username->execute(array(':username' => $username));
+                if(!$test_username->fetchColumn()) {
+                    // hash the password
+                    $password = md5($password);
+                    $pw_str = substr($password, 0, 8);
+                    $password = $pw_str . md5($pw_str . $password);
+                    
+                    $register_sql = "INSERT INTO " . MYSQL_PREFIX . "users
+                        (username, password, last_known_ip)
+                        VALUES(:username, :password, :ip)";
+                    $register = $db->prepare($register_sql);
+                    $is_registered = $register->execute(array(
+                        ':username' => $username,
+                        ':password' => $password,
+                        ':ip' => ip2long($_SERVER['REMOTE_ADDR'])
+                    ));
+                    
+                    if($is_registered) {
+                        return array('r' => 'registered');
+                    } else {
+                        return array('r' => 'error', 'e' => 'unknown');
+                    }
                 } else {
-                    print json_encode(array('r' => 'error', 'e' => 'unknown'));
+                    return array('r' => 'error', 'e' => 'username taken');
                 }
             } else {
-                print json_encode(array('r' => 'error', 'e' => 'invalid password'));
+                return array('r' => 'error', 'e' => 'invalid password');
             }
         } else {
-            print json_encode(array('r' => 'error', 'e' => 'invalid username'));
+            return array('r' => 'error', 'e' => 'invalid username');
         }
     }
     
