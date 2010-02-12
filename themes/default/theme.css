@@ -457,7 +457,7 @@ div#imjs-lr form {
     background: #F0EFED url(images/w.png) repeat-x;
     border: 1px solid #cfceca;
     max-width: 220px;
-    padding: 5px 5px 10px 10px;
+    padding: 5px 5px 10px 8px;
     overflow: auto;
     -moz-border-radius: 2px;
     -webkit-border-radius: 2px;
@@ -472,13 +472,12 @@ div#imjs-lr form {
         border: 0;
         padding: 0;
         margin: 0;
-        overflow: auto;
     }
     
     div#imjs-lr form h2 {
         font: 700 20px/24px Helvetica Neue, Helvetica, Arial, Calibri, Tahoma, Verdana, sans-serif;
         margin: 0;
-        padding: 7px 0 0;
+        padding: 7px 0 0 2px;
         color: #555;
         text-shadow: 0 1px 0px #fff;
     }
@@ -498,6 +497,12 @@ div#imjs-lr form {
             border: 2px solid #ff1111;
         }
     
+    div#imjs-lr form button {
+        float: right;
+        background: #f4f3f1;
+        outline: 0;
+    }
+    
     div#imjs-lr form input, div#imjs-lr form button {
         border: 1px solid #ddd;
         color: #000;
@@ -505,17 +510,19 @@ div#imjs-lr form {
         font: 16px/20px Helvetica Neue, Helvetica, Arial, Calibri, Tahoma, Verdana, sans-serif;
         -moz-border-radius: 2px;
         -webkit-border-radius: 2px;
+        margin: 0;
     }
     
-        div#imjs-lr form input:focus, div#imjs-lr form button:focus {
-            margin: -1px;
-            border: 2px solid #999;
+        div#imjs-lr form p {
+            padding-left: 2px;
+            overflow: visible;
         }
-    
-    div#imjs-lr form button {
-        float: right;
-        background: #f4f3f1;
-    }
+        
+        div#imjs-lr form input:focus, div#imjs-lr form button:focus {
+            position: relative;
+            border: 2px solid #999;
+            margin: -1px;
+        }
     
     p.imjs-submit {
         width: 207px;

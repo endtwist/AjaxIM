@@ -78,4 +78,4 @@ if(substr($action, 0, 1) != '_' && method_exists($im, $action))
 else
     print json_encode(array('e'=>'no method'));
 
-/* End of index.php */
+/* End of ajaxim.php */
