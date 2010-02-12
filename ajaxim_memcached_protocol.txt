@@ -1,0 +1,93 @@
+Node Server Memcached Protocol
+for logging users in and out of the server.
+-------------------------------------------
+
+add <username> <!ignore flags> <!ignore exptime> <bytes> [!ignore noreply]\r\n
+
+- <username> is the username of the new user
+
+- <flags> and <exptime> are ignored.
+
+- <bytes> is the number of bytes in the data block to follow, *not*
+  including the delimiting \r\n. <bytes> may *not* be zero.
+  
+After this line, the client sends the JSON-encoded data block:
+
+<data block>\r\n
+
+- <data block> is JSON-encoded information about the user, having a length
+  of <bytes> bytes.
+
+After sending the command line and the data block, the client awaits
+the reply, which may be:
+
+- "STORED\r\n", to indicate that the user is or has been logged in.
+
+- "NOT_STORED\r\n", to indicate that there was a problem storing the
+  new user data.
+
+Retrieval command:
+------------------
+
+The retrieval commands "get" and "gets" operates like this:
+
+get <type/identifier>\r\n
+gets <type/identifier> <type/identifier> <...>\r\n
+
+- <type/identifier> is one of:
+  - session/<session_id> where <session_id> is the session of an
+    existing user.
+    > returns information about the user
+  - username/<username> where <username> is the (properly formatted)
+    username of a logged in user.
+    > returns information about the user
+  - list/
+    > returns a list of all online users
+  - online/
+    > returns an integer value of the online user count
+
+After this command, the client expects zero or more items, each of
+which is received as a text line followed by a data block. After all
+the items have been transmitted, the server sends the string
+
+"END\r\n"
+
+to indicate the end of response.
+
+Each item sent by the server looks like this:
+
+VALUE <key> <flags> <bytes>\r\n
+<data block>\r\n
+
+- <key> is the key for the item being sent
+
+- <flags> is set to 0
+
+- <bytes> is the length of the data block to follow, *not* including
+  its delimiting \r\n
+
+- <data block> is the data for this response, usually in JSON format (exception: online/).
+
+If some of the keys appearing in a retrieval request are not sent back
+by the server in the item list this means that the server does not
+hold items with such keys (because they were never stored, or stored
+but deleted to make space for more items, or expired, or explicitly
+deleted by a client).
+
+Logging out
+--------
+
+The command "delete" allows for explicit logging out of users:
+
+delete <username>\r\n
+
+- <username> is the username of the user the client wishes the server
+  to log out.
+
+The response line to this command can be one of:
+
+- "DELETED\r\n" to indicate success
+
+- "NOT_FOUND\r\n" to indicate that the user with this username was not
+  found.
+
