@@ -134,11 +134,11 @@ var AjaxIM = function(config) {
         setInterval(function() {
             for(username in self.users) {
                 var user = self.users[username];
-                if((self._now() - user.last_active) > 50000 &&
+                if((Date.now() - user.last_active) > 50000 &&
                     user._callbacks.length == 0) {
 
                     self._killUser(username);
-                } else if((self._now() - user.last_active) >= 50000) {
+                } else if((Date.now() - user.last_active) >= 50000) {
                     user.callback();
                 }
             }
@@ -148,7 +148,7 @@ var AjaxIM = function(config) {
         setInterval(function() {
             for(s in self.sessions) {
                 var session = self.sessions[s];
-                var age = (self._now() - session.last_active) / 3600000; // in hours
+                var age = (Date.now() - session.last_active) / 3600000; // in hours
                 
                 if(age >= self.config.cookie.period) {
                     self._d('Session [' + s + '] for user [' +
@@ -157,13 +157,6 @@ var AjaxIM = function(config) {
                 }
             }
         }, 3600000); // 1 hour
-    };
-    
-    // === //private//\\ {{{ AjaxIM._now() }}} ===
-    //
-    // Returns the current time in milliseconds.
-    this._now = function() {
-        return (new Date()).getTime();
     };
     
     // === //private//\\ {{{ AjaxIM._session(request, provide) }}} ===
@@ -244,7 +237,7 @@ var AjaxIM = function(config) {
                     username: username,
                     user_id: data.user_id,
                     session_id: data.session_id,
-                    last_active: self._now(),
+                    last_active: Date.now(),
                     friends: data.friends,
                     status: {s: 1, m: ''},
                     guest: data['guest'] ? true : false,
@@ -282,7 +275,7 @@ var AjaxIM = function(config) {
                 username: username,
                 user_id: data.user_id,
                 friends: data.friends,
-                last_active: self._now()
+                last_active: Date.now()
             };
             return true;
         } else {
@@ -338,8 +331,8 @@ var AjaxIM = function(config) {
             var response = this.response;
             
             user._callbacks.push(function(msg) { response.reply(200, msg); });
-            self.users[user.username].last_active = self._now();
-            self.sessions[user.session_id].last_active = self._now();
+            self.users[user.username].last_active = Date.now();
+            self.sessions[user.session_id].last_active = Date.now();
         }
     };
     
@@ -386,8 +379,8 @@ var AjaxIM = function(config) {
         
         self._d('User [' + user.username + '] sent a message to [' + to + '] ' + (sent ? 'successfully.' : 'UNSUCCESSFULLY.'));
 
-        self.users[user.username].last_active = self._now();
-        self.sessions[user.session_id].last_active = self._now();
+        self.users[user.username].last_active = Date.now();
+        self.sessions[user.session_id].last_active = Date.now();
         this.response.reply(200, {'sent': sent});
     };
 
@@ -423,8 +416,8 @@ var AjaxIM = function(config) {
         self._d('User [' + user.username + '] set his/her status to [' + statusMsg + ']. Friends notified.');
         
         self.users[user.username].status = {s: status, m: this.request.uri.params.message};
-        self.users[user.username].last_active = self._now();
-        self.sessions[user.session_id].last_active = self._now();
+        self.users[user.username].last_active = Date.now();
+        self.sessions[user.session_id].last_active = Date.now();
         this.response.reply(200, {status_updated: status_updated});
     };
     

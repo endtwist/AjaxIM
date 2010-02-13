@@ -13,6 +13,8 @@ var AjaxIM, AjaxIMLoadedFunction;
     var jsfolder = tagsrc.replace(/im.load.js([?].+)?/, '');
     var imfolder = jsfolder.replace(/js\/$/, '');
 
+    var nodehost = '';
+
     var dependencies = [
         ['jquery-1.3.2.js', function() { return (typeof window['jQuery'] != 'undefined'); }],
         ['jquery.jsonp-1.1.0.js', function() { return (typeof jQuery['jsonp'] != 'undefined'); }],
@@ -53,10 +55,10 @@ var AjaxIM, AjaxIMLoadedFunction;
                 theme: imfolder + 'themes/default',
                 flashStorage: jsfolder + 'jStore.Flash.html'
             }, {
-                poll: 'http://localhost:8000/poll',
-                send: 'http://localhost:8000/send',
-                status: 'http://localhost:8000/status',
-                resume: 'http://localhost:8000/resume'
+                poll: 'http://' + nodehost + '/poll',
+                send: 'http://' + nodehost + '/send',
+                status: 'http://' + nodehost + '/status',
+                resume: 'http://' + nodehost + '/resume'
             });
         } else if(tagsrc.match(/[?]guest$/)) {
             AjaxIM.init({
@@ -64,10 +66,10 @@ var AjaxIM, AjaxIMLoadedFunction;
                 theme: imfolder + 'themes/default',
                 flashStorage: jsfolder + 'jStore.Flash.html'
             }, {
-                poll: 'http://localhost:8000/poll',
-                send: 'http://localhost:8000/send',
-                status: 'http://localhost:8000/status',
-                resume: 'http://localhost:8000/resume'
+                poll: 'http://' + nodehost + '/poll',
+                send: 'http://' + nodehost + '/send',
+                status: 'http://' + nodehost + '/status',
+                resume: 'http://' + nodehost + '/resume'
             });
             AjaxIM.client.login();
         }
