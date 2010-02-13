@@ -195,7 +195,7 @@ function is_configphp_writable() {
 }
 
 function is_configjs_writable() {
-    return is_writable('node/config.js');
+    return is_writable('server/config.js');
 }
 
 // file_array() by Jamon Holmgren. Exclude files by putting them in the $exclude
@@ -263,11 +263,11 @@ function library_array($path, $exclude, $recursive = false) {
 }
 
 function get_available_servers() {
-    return library_array('./server', '.|..|base.php');
+    return library_array('./libraries/server', '.|..|base.php');
 }
 
 function get_available_db_engines() {
-    return library_array('./db', '.|..|base.php');
+    return library_array('./libraries/db', '.|..|base.php');
 }
 
 if($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -298,7 +298,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $imjs_init = "\nAjaxIM.init({
     cookieName: '" . $_POST['cookie'] . "',
     pollType: 'long',
-    pollServer: '" . rtrim($_POST['url'], '/') . "/server.php'
+    pollServer: '" . rtrim($_POST['url'], '/') . "/ajaxim.php'
 }";
     
     if(intval($_POST['needs_nodejs']) == 1) {

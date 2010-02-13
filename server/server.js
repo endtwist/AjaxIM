@@ -30,6 +30,7 @@
 var sys = require('sys'),
     http = require('http'),
     tcp = require('tcp'),
+    url = require('url'),
     config = require('./config');
 
 var AjaxIM = function(config) {
@@ -193,6 +194,8 @@ var AjaxIM = function(config) {
                 this._d('Invalid cookie for an unknown user.');
                 return false;
             }
+        } else {
+            return false;
         }
 
         switch(provide) {
@@ -360,8 +363,7 @@ var AjaxIM = function(config) {
         var sent = false;
 
         var user = self._session(this.request, 'object');
-                
-        var to = this.request.uri.params['to'];
+        var to = this.request.uri.params['to'] || '';
         
         if(!user) {
             self._d('An unknown user tried to send a message to [' + to + '] without being authenticated.');
@@ -604,6 +606,15 @@ function WebServer(host, port) {
     this.start = function() {    
         http.createServer(function(request, response) {
             var handler = self._notFound, args = [];
+            
+            if(typeof request['uri'] == 'undefined') {
+                uri = url.parse(request.url, true);
+                request['uri'] = {
+                    'path': uri.pathname,
+                    'params': uri.query || {}
+                };
+            }
+            
             for(var i = 0; i < self.urlMap.length; i++) {
                 var map = self.urlMap[i];
                 if(map[1] == request.method && map[0].test(request.uri.path)) {
@@ -619,14 +630,16 @@ function WebServer(host, port) {
             
             response.reply = function(code, obj) {
                 var content = JSON.stringify(obj);
+                content = request.uri.params.callback + '(' + content + ');';
+                
                 response.sendHeader(code, {
-                    'Content-Type': 'text/html',
-                    'Content-Length': content.length,
-                    'Expires': 'Mon, 26 Jul 1997 05:00:00 GMT',
-                    'Cache-Control': 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
-                    'Pragma': 'no-cache'
+                    'content-type': 'text/html',
+                    'content-length': content.length,
+                    'expires': 'Mon, 26 Jul 1997 05:00:00 GMT',
+                    'cache-control': 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
+                    'pragma': 'no-cache'
                 });
-                response.sendBody(request.uri.params.callback + '(' + content + ');');
+                response.sendBody(content);
                 response.finish();
             }
 
