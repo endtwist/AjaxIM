@@ -13,10 +13,18 @@
  * Requirements: Database
  */
 
+// == Default Server Library ==
+//
+// This is the default PHP-only server library. This library allows you
+// to use Ajax IM on a shared server, without installing any extra software.
 class Default_IM extends IM {
     const FIXBUFFER = 1024; // Works around an output buffering issue in IE & Safari
     const FIXEOL = '<br/>'; // Works around an end-of-line issue in Safari
 
+    // === {{{Default_IM::}}}**{{{__construct()}}}** ===
+    //
+    // Initializes the IM library and retrieves the user's session, if one
+    // currently exists.
     function __construct() {
         parent::__construct();
         
@@ -27,6 +35,14 @@ class Default_IM extends IM {
         }
     }
     
+    // === {{{Default_IM::}}}**{{{login($username, $password)}}}** ===
+    //
+    // Authenticate a user against the database. If the user is valid,
+    // log them in.
+    //
+    // ==== Parameters ====
+    // * {{{$username}}} is the user's login name.\\
+    // * {{{$password}}} is an already-md5'd copy of the user's password.
     public function login($username, $password) {
         if($user = User::authenticate($username, $password)) {
             // user just logged in, update login time.
@@ -43,6 +59,9 @@ class Default_IM extends IM {
         }
     }
     
+    // === {{{Default_IM::}}}**{{{logout()}}}** ===
+    //
+    // Signs the user out.
     public function logout() {
         session_destroy();
         $_SESSION = array();
@@ -50,6 +69,14 @@ class Default_IM extends IM {
         return array('r' => 'logged out');
     }
     
+    // === {{{Default_IM::}}}**{{{send($to, $message)}}}** ===
+    //
+    // Send a message to another user by adding the message to the
+    // database.
+    //
+    // ==== Parameters ====
+    // * {{{$to}}} is the username of the recipient.\\
+    // * {{{$message}}} is the content.
     public function send($to, $message) {
         if(!$this->username)
             return array('r' => 'error', 'e' => 'no session found');
@@ -67,6 +94,10 @@ class Default_IM extends IM {
         }
     }
     
+    // === {{{Default_IM::}}}**{{{status($status, $message)}}}** ===
+    //
+    // Sets the status of the current user, including any associated
+    // status message.
     public function status($status, $message) {
         if(!$this->username)
             return array('r' => 'error', 'e' => 'no session found');
@@ -89,6 +120,13 @@ class Default_IM extends IM {
         }
     }
     
+    // === {{{Default_IM::}}}**{{{register($username, $password)}}}** ===
+    //
+    // Create a new user based on the provided username and password.
+    //
+    // ==== Parameters ====
+    // * {{{$username}}} is the new user's login name.\\
+    // * {{{$password}}} is the user's plaintext password.
     public function register($username, $password) {
         if(preg_match('/^[A-Za-z0-9_.]{3,16}$/', $username)) {
             if(strlen($password) > 3) {
@@ -129,6 +167,14 @@ class Default_IM extends IM {
         }
     }
     
+    // === {{{Default_IM::}}}**{{{poll($method)}}}** ===
+    //
+    // Query the database for any new messages, and respond (or wait)
+    // using the specified method (short, long, or comet).
+    //
+    // ==== Parameters ====
+    // * {{{$method}}} is the type of response method to use as a reply.
+    // See {{{im.js}}} for a description of each method.
     public function poll($method) {
         if(!$this->username)
             return array('r' => 'error', 'e' => 'no session found');
@@ -165,6 +211,9 @@ class Default_IM extends IM {
         }
     }
     
+    // === //private// {{{Default_IM::}}}**{{{_longPoll()}}}** ===
+    //
+    // Use the long polling technique to check for and deliver new messages.
     private function _longPoll() {
         set_time_limit(30);
         
@@ -189,6 +238,9 @@ class Default_IM extends IM {
             return array();
     }
     
+    // === //private// {{{Default_IM::}}}**{{{_shortPoll()}}}** ===
+    //
+    // Use the short polling technique to check for and deliver new messages.
     private function _shortPoll() {
         $messages = Message::getMany('to', $this->user_id);
         
@@ -199,6 +251,9 @@ class Default_IM extends IM {
         }
     }
     
+    // === //private// {{{Default_IM::}}}**{{{_comet()}}}** ===
+    //
+    // Use the comet/streaming technique to check for and deliver new messages.
     private function _comet() {
         set_time_limit(0);
     
@@ -224,6 +279,12 @@ class Default_IM extends IM {
         }
     }
     
+    // === //private// {{{Default_IM::}}}**{{{_pollParseMessages()}}}** ===
+    //
+    // Parse each message object and return it as an array deliverable to the client.
+    //
+    // ==== Parameters ====
+    // * {{{$messages}}} is the array of message objects.
     private function _pollParseMessages($messages) {
         $msg_arr = array();
         foreach($messages as $msg) {
@@ -232,6 +293,10 @@ class Default_IM extends IM {
         return $msg_arr;
     }
     
+    // === //private// {{{Default_IM::}}}**{{{_sanitize()}}}** ===
+    //
+    // Sanitize messages by preventing any HTML tags from being created
+    // (replaces &lt; and &gt; entities).
     private function _sanitize($str) {
         return str_replace('>', '&gt;', str_replace('<', '&lt;', str_replace('&', '&amp;', $str)));
     }

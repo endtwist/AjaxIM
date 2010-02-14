@@ -14,7 +14,17 @@
  * Requirements: Node.js
  */
 
+// == Node.js Guest Server Library ==
+//
+// This is the [[http://nodejs.org|Node.js]] Guest server library for Ajax IM. It
+// creates a random "Guest" username upon login and passes that information to
+// the Node.js server. Additionally, it makes every user a friend of every other
+// user.
 class NodeJS_Guests_IM extends IM {
+    // === {{{NodeJS_Guests_IM::}}}**{{{__construct()}}}** ===
+    //
+    // Initializes the IM library and retrieves the user's session, if one
+    // currently exists.
     function __construct() {
         parent::__construct();
 
@@ -35,10 +45,21 @@ class NodeJS_Guests_IM extends IM {
         }
     }
 
+    // === {{{NodeJS_Guests_IM::}}}**{{{__destruct()}}}** ===
+    //
+    // Closes the connection to the Node.js server.
     function __destruct() {
         $this->memcache->close();
     }
 
+    // === {{{NodeJS_IM::}}}**{{{login($username, $password)}}}** ===
+    //
+    // Create a new Guest username based in the microtime, then
+    // pass the user's information to the Node.js server.
+    //
+    // ==== Parameters ====
+    // * {{{$username}}} is unused (kept for compatability with caller).\\
+    // * {{{$password}}} is unused (kept for compatability with caller).
     public function login($username='', $password='') {
         $username = 'Guest' . (microtime(true) * 100);
         $session_id = md5(microtime(true) . $username);
@@ -83,6 +104,9 @@ class NodeJS_Guests_IM extends IM {
         );
     }
 
+    // === {{{NodeJS_IM::}}}**{{{logout()}}}** ===
+    //
+    // Signs the user out of the Node.js server.
     public function logout() {
         $this->memcache->delete($this->username);
 

@@ -166,13 +166,12 @@ var AjaxIM = function(config) {
     // exist, {{{false}}} is returned. If {{{'object'}}} is requested and
     // there is no active session for that user, {{{false}}} is also returned.
     //
-    // {{{request}}} is a request object, as is provided by the {{{http}}} module 
-    // {{{provide}}} is one of:
-    // * {{{username}}} which merely checks for the existence of session data and
+    // ==== Parameters ====
+    // * {{{request}}} is a request object, as is provided by the {{{http}}} module 
+    // * {{{provide}}} is one of:
+    // ** {{{username}}} which merely checks for the existence of session data and
     // returns the username for that session.
-    // * {{{object}}} checks for the existence of the session //and// the existence
-    // of an active session (the user is currently logged in), and returns the user
-    // object, if found.
+    // ** {{{object}}} checks for the existence of the session //and// the existence of an active session (the user is currently logged in), and returns the user object, if found.
     this._session = function(request, provide) {
         if(this.config.cookie.name in request.cookies) {
             try {
@@ -214,7 +213,9 @@ var AjaxIM = function(config) {
     //
     // If debugging is enabled, this function prints debug data, with the
     // current formatted time, to the console.
-    // {{{str}}} is the debug string.
+    //
+    // ==== Parameters ====
+    // * {{{str}}} is the debug string.
     this._d = function(str) {      
         if(this.debug) {
             var addZero = function(str) { return str < 10 ? '0' + str : str; };
@@ -228,6 +229,19 @@ var AjaxIM = function(config) {
     };
     
     // === //private//\\ {{{ AjaxIM._initUser(username, data) }}} ===
+    //
+    // Initializes a user session and adds the user to the users list. Additionally,
+    // it stores a callback function which will push data directly to this user. A
+    // "session" object is also stored, allowing a user to reconnect at a later time
+    // (provided that their session hasn't yet expired).
+    //
+    // ==== Parameters ====
+    // * {{{username}}} is the user's account name\\
+    // * {{{data}}} is an array of user data:\\
+    // ** {{{user_id}}} is a unique id for this particular user.
+    // ** {{{session_id}}} is the user's unique session id (used to (re)connect to the server).
+    // ** {{{friends}}} is the friends list.
+    // ** {{{guest}}} (optional) defines whether or not this is a "guest" (temporary) user.
     this._initUser = function(username, data) {
         if(data['user_id']) {
             self._d('User [' + username + '] has connected. Adding to user hash and notifying friends.');
@@ -284,6 +298,10 @@ var AjaxIM = function(config) {
     };
     
     // === //private//\\ {{{ AjaxIM._killUser() }}} ===
+    //
+    // Remove a user from the server. If they are a guest user, also remove
+    // their session data; otherwise, retain session data so that the user's
+    // session can be resumed later.
     this._killUser = function(username) {
         if(!username || !(username in self.users))
             return false;
@@ -316,6 +334,10 @@ var AjaxIM = function(config) {
     };
     
     // === {{{ AjaxIM.poll() }}} ===
+    //
+    // Store the user's connection in the callback list and update both the
+    // user and session "last_active" variable (denoting when the user last
+    // contacted the server).
     this.poll = function() {
         if(this.debug && ('sid' in this.request.uri.params && this.request.uri.params['sid'].length))
             this.request.cookies[self.config.cookie.name] = {sid: this.request.uri.params.sid};
@@ -337,6 +359,9 @@ var AjaxIM = function(config) {
     };
     
     // === {{{ AjaxIM.resume() }}} ===
+    //
+    // Attempt to resume a session based on a session id stored in a
+    // cookie.
     this.resume = function() {
         if(!(user = self._session(this.request, 'username'))) {
             this.response.reply(200, {'r': 'error', 'e': 'no session found'});
@@ -352,6 +377,10 @@ var AjaxIM = function(config) {
     };
     
     // === {{{ AjaxIM.send() }}} ===
+    //
+    // Send a message to the user specified in the query and return a
+    // result declaring whether or not the message was sent. Messages
+    // are only sent if the user has an active session.
     this.send = function() {
         var sent = false;
 
@@ -385,6 +414,11 @@ var AjaxIM = function(config) {
     };
 
     // === {{{ AjaxIM.status() }}} ===
+    //
+    // Update a user's status based on the query parameters; this includes
+    // both their status code and any custom status message associated with
+    // that code. If the status update is successful, send an update to the
+    // user's friends.
     this.status = function() {
         var status_updated = false;
 
@@ -422,16 +456,31 @@ var AjaxIM = function(config) {
     };
     
     // === {{{ AjaxIM.online() }}} ===
+    //
+    // Return a count of the number of online users.
     this.online = function() {
         this.response.reply(200, {count: self.onlineCount});
     };
     
     // === {{{ AjaxIM.apiLogin(username, data) }}} ===
+    //
+    // A Memcache API function. Initializes a new user based on the
+    // sent username and decoded JSON user data.
+    //
+    // ==== Parameters ====
+    // * {{{username}}} is the unique username to initialize.
+    // * {{{data}}} is the user data outlined in the _initUser function.
     this.apiLogin = function(username, data) {
         this._initUser.call(self, username, data);
     };
     
     // === {{{ AjaxIM.apiGetUser(username) }}} ===
+    //
+    // A Memcache API function. Returns user data based on a
+    // specified username.
+    //
+    // ==== Parameters ====
+    // * {{{username}}} is the name of the user to retrieve.
     this.apiGetUser = function(username) {
         var user = this.users[username];
         return {
@@ -443,6 +492,12 @@ var AjaxIM = function(config) {
     };
     
     // === {{{ AjaxIM.apiGetSession(session_id) }}} ===
+    //
+    // A Memcache API function. Returns user data based on a
+    // specified session id. Returns the same data as apiGetUser.
+    //
+    // ==== Parameters ====
+    // * {{{session_id}}} is the session id of the user to retrieve.
     this.apiGetSession = function(session_id) {
         if(session_id in this.sessions)
             return this.apiGetUser(this.sessions[session_id].username);
@@ -451,6 +506,9 @@ var AjaxIM = function(config) {
     };
     
     // === {{{ AjaxIM.apiGetUserList() }}} ===
+    //
+    // A Memcache API function. Returns user data for all online users.
+    // Same data returned as apiGetUser, but in an array of all users.
     this.apiGetUserList = function() {
         var users = [];
         for(var username in this.users) {
@@ -468,11 +526,26 @@ var AjaxIM = function(config) {
     };
     
     // === {{{ AjaxIM.apiOnlineCount() }}} ===
+    //
+    // A Memcache API function. Returns a count of all online users.
     this.apiOnlineCount = function() {
         return {count: this.onlineCount};
     };
     
     // === {{{ AjaxIM.apiAddFriend(type, id, value) }}} ===
+    //
+    // A Memcache API function. Adds a user to the friends list
+    // of another user.  Note, however, that this only adds the friend
+    // to the user's active session; it does not add the friend permanently
+    // to any database that might be in use.
+    //
+    // ==== Parameters ====
+    // * {{{type}}} is the type of identifier used to identify the user. One of
+    // "session" or "username".\\
+    // * {{{id}}} is the actual identifier; a username or session id.\\
+    // * {{{value}}} is an array of data about the new friend:
+    // ** {{{u}}} is the username of the friend.
+    // ** {{{g}}} is the group into which the friend will be placed.
     this.apiAddFriend = function(type, id, value) {
         if(type == 'session') {
             if(id in this.sessions)
@@ -499,6 +572,14 @@ var AjaxIM = function(config) {
     };
     
     // === {{{ AjaxIM.apiRemoveFriend(type, id, value) }}} ===
+    //
+    // A Memcache API function. Does the exact opposite of {{{apiAddFriend}}}.
+    //
+    // ==== Parameters ====
+    // * {{{type}}} is the type of identifier used to identify the user. One of
+    // "session" or "username".\\
+    // * {{{id}}} is the actual identifier; a username or session id.\\
+    // * {{{value}}} is the username of the friend to remove.
     this.apiRemoveFriend = function(type, id, value) {
         if(type == 'session') {
             if(id in this.sessions)
@@ -523,6 +604,14 @@ var AjaxIM = function(config) {
     };
     
     // === {{{ AjaxIM.apiBroadcastMessage(type, id, value) }}} ===
+    //
+    // A Memcache API function. Broadcasts a message of type "message" ("m")
+    // to all signed-in users.
+    // 
+    // ==== Parameters ====
+    // * {{{type}}} should be "from".\\
+    // * {{{id}}} is the name of the sender; can be anything.\\
+    // * {{{value}}} is message.
     this.apiBroadcastMessage = function(type, id, value) {
         if(type != 'from' || !id.length)
             return false;
@@ -535,7 +624,20 @@ var AjaxIM = function(config) {
     };
     
     // === {{{ AjaxIM.apiBroadcastRaw(type, id, value) }}} ===
+    //
+    // A Memcache API function. Broadcasts a message of the specified
+    // type to all signed-in users.
+    // 
+    // ==== Parameters ====
+    // * {{{type}}} should be "from".\\
+    // * {{{id}}} is the name of the sender; can be anything.\\
+    // * {{{value}}} is message object:
+    // ** {{{t}}} is the type of message.
+    // ** {{{s}}} is the sender.
+    // ** {{{r}}} is the recipient (usually irrelevant in broadcasted messages).
+    // ** {{{m}}} is the content of the message.
     this.apiBroadcastRaw = function(type, id, value) {
+        // Why "from?" This needs to be reconsidered.
         if(type != 'from' || !id.length || typeof value != 'object')
             return false;
 

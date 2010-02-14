@@ -13,7 +13,15 @@
  * Requirements: Database, Node.js
  */
 
+// == Node.js Server Library ==
+//
+// This is the [[http://nodejs.org|Node.js]] server library for Ajax IM. It
+// handles registration and passing login to the Node.js server.
 class NodeJS_IM extends IM {
+    // === {{{NodeJS_IM::}}}**{{{__construct()}}}** ===
+    //
+    // Initializes the IM library and retrieves the user's session, if one
+    // currently exists.
     function __construct() {
         parent::__construct();
         
@@ -35,10 +43,21 @@ class NodeJS_IM extends IM {
         }
     }
     
+    // === {{{NodeJS_IM::}}}**{{{__destruct()}}}** ===
+    //
+    // Closes the connection to the Node.js server.
     function __destruct() {
         $this->memcache->close();
     }
     
+    // === {{{NodeJS_IM::}}}**{{{login($username, $password)}}}** ===
+    //
+    // Authenticate a user against the database. If the user is valid,
+    // pass the user's information to the Node.js server.
+    //
+    // ==== Parameters ====
+    // * {{{$username}}} is the user's login name.\\
+    // * {{{$password}}} is an already-md5'd copy of the user's password.
     public function login($username, $password) {
         if($user = User::authenticate($username, $password)) {
             // user just logged in, update login time.
@@ -65,12 +84,22 @@ class NodeJS_IM extends IM {
         }
     }
     
+    // === {{{NodeJS_IM::}}}**{{{logout()}}}** ===
+    //
+    // Signs the user out of the Node.js server.
     public function logout() {
         $this->memcache->delete($this->username);
         
         return array('r' => 'logged out');
     }
     
+    // === {{{NodeJS_IM::}}}**{{{register($username, $password)}}}** ===
+    //
+    // Create a new user based on the provided username and password.
+    //
+    // ==== Parameters ====
+    // * {{{$username}}} is the new user's login name.\\
+    // * {{{$password}}} is the user's plaintext password.
     public function register($username, $password) {
         if(preg_match('/^[A-Za-z0-9_.]{3,16}$/', $username)) {
             if(strlen($password) > 3) {
@@ -111,6 +140,15 @@ class NodeJS_IM extends IM {
         }
     }
     
+    // === {{{NodeJS_IM::}}}**{{{add_friend($friend, $group)}}}** ===
+    //
+    // Add a new friend to the current user's friend list, in the specified
+    // group name. Adds the friend to both the database and the current
+    // Node.js server session.
+    //
+    // ==== Parameters ====
+    // * {{{$friend}}} is the username of the friend.\\
+    // * {{{$group}}} is the name of group in which to place the friend.
     public function add_friend($friend, $group) {
         if(!$this->username)
             return array('r' => 'error', 'e' => 'no session found');
