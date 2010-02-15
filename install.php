@@ -313,7 +313,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         $node_url = $_POST['public_host'] . ":" . $_POST['public_port'];
             
         $imloadjs = file_get_contents('js/im.load.js');
-        $imloadjs = preg_replace("/(var nodehost = )'';/", "$1'" . $node_url . "'")
+        $imloadjs = preg_replace("/(var nodehost = )'';/", "$1'" . $node_url . "'");
         $imljs = fopen('js/im.load.js', 'w');
         fwrite($imljs, $imloadjs);
         fclose($imljs);
@@ -343,7 +343,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <ul>
                     <li>For security purposes, please delete <code>install.php</code>.</li>
                 
-                    <?php if(!$_POST['need_nodejs'] == 1): ?>
+                    <?php if(!$_POST['need_nodejs'] == 1) { ?>
                     <li>The Node.js server host has been added to <code>js/im.load.js</code>; please confirm that the URL generated is correct.</li>
                     <li>
                         <p>To get the standalone Node.js server running, you will need to run the following command on the command line of your server:</p>
@@ -354,12 +354,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <li>
                         <p>Now that Ajax IM is installed, please see the <a href="http://ajaxim.com/documentation/basics/quick-start-nodejs/">Quick Start with Node.js</a> guide to complete set up.</p>
                     </li>
-                    <?php else; ?>
+                    <?php } else { ?>
                     <li>Since you did <strong>not</strong> setup Ajax IM with the Node.js server, it is recommended that you delete the <code>server</code> folder (containing the files <code>config.js</code> and <code>server.js</code>).</li>
                     <li>
                         <p>Now that Ajax IM is installed, please see the <a href="http://ajaxim.com/documentation/basics/quick-start/">Quick Start</a> guide to complete set up.</p>
                     </li>
-                    <?php endif; ?>
+                    <?php } ?>
                 </ul>
             </fieldset>
         </form>
@@ -531,11 +531,11 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 <p>
                     <span>Is <code>node/config.js</code> writable?</span>
-                    <?php if(is_writable('server/config.js')): ?>
+                    <?php if(is_writable('server/config.js')) { ?>
                     <span class="writable">Yes.</span>
-                    <?php else: ?>
+                    <?php } else { ?>
                     <span class="problem"><strong>No.</strong> Please change the permissions of <code>server/config.js</code> to "writable" or 755 (on Unix-based systems) before continuing!</span>
-                    <?php endif; ?>
+                    <?php } ?>
                 </p>
                 
                 <p>
@@ -561,7 +561,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             <p id="install"><input type="submit" value="Install" name="install"></p>
         </form>
-<? } ?>
+<?php } ?>
         
         <p id="footer"><a href="http://ajaxim.com">Ajax IM</a> &copy; 2005&thinsp;&ndash;&thinsp;2010, <a href="http://unwieldy.net">Joshua Gross</a></p></p>
     </body>
