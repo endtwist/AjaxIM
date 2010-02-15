@@ -71,7 +71,10 @@ var AjaxIM, AjaxIMLoadedFunction;
                 status: 'http://' + nodehost + '/status',
                 resume: 'http://' + nodehost + '/resume'
             });
-            AjaxIM.client.login();
+            function tmplogin() { AjaxIM.client.login(); }
+            $(AjaxIM.client)
+                .bind('noSession', tmplogin)
+                .bind('sessionNotResumed', tmplogin);
         }
         
         AjaxIM.loaded();

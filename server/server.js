@@ -30,8 +30,9 @@
 var sys = require('sys'),
     http = require('http'),
     tcp = require('tcp'),
-    url = require('url'),
     config = require('./config');
+
+try { url = require('url'); } catch(e) {}
 
 var AjaxIM = function(config) {
     var self = this;
@@ -482,13 +483,17 @@ var AjaxIM = function(config) {
     // ==== Parameters ====
     // * {{{username}}} is the name of the user to retrieve.
     this.apiGetUser = function(username) {
-        var user = this.users[username];
-        return {
-            username: user.username,
-            user_id: user.user_id,
-            status: user.status,
-            session_id: user.session_id
-        };
+        if(username in this.users) {
+            var user = this.users[username];
+            return {
+                username: user.username,
+                user_id: user.user_id,
+                status: user.status,
+                session_id: user.session_id
+            };
+        } else {
+            return false;
+        }
     };
     
     // === {{{ AjaxIM.apiGetSession(session_id) }}} ===

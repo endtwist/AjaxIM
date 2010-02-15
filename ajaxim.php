@@ -27,21 +27,23 @@ require_once('libraries/db/base.php');
 require_once('libraries/server/base.php');
 
 # import the database library
-require_once('libraries/db/' . DB_ENGINE . '.php');
-$db_class = DB_ENGINE . '_Database';
+if(strlen(DB_ENGINE)) {
+    require_once('libraries/db/' . DB_ENGINE . '.php');
+    $db_class = DB_ENGINE . '_Database';
 
-if (!function_exists('class_alias')) {
-    // Allows us to alias Database library classes to standardized names
-    function class_alias($original, $alias) {
-        eval('class ' . $alias . ' extends ' . $original . ' {}');
+    if (!function_exists('class_alias')) {
+        // Allows us to alias Database library classes to standardized names
+        function class_alias($original, $alias) {
+            eval('class ' . $alias . ' extends ' . $original . ' {}');
+        }
     }
+    
+    class_alias(DB_ENGINE . '_Database', 'Database');
+    class_alias(DB_ENGINE . '_User', 'User');
+    class_alias(DB_ENGINE . '_Status', 'Status');
+    class_alias(DB_ENGINE . '_Message', 'Message');
+    class_alias(DB_ENGINE . '_Friend', 'Friend');
 }
-
-class_alias(DB_ENGINE . '_Database', 'Database');
-class_alias(DB_ENGINE . '_User', 'User');
-class_alias(DB_ENGINE . '_Status', 'Status');
-class_alias(DB_ENGINE . '_Message', 'Message');
-class_alias(DB_ENGINE . '_Friend', 'Friend');
 
 // Fix problems with magic_quotes_gpc/sybase
 if(function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc()) {

@@ -54,8 +54,7 @@
                 
             h1 {
                 text-indent: -10000px;
-                /*background: url(http://ajaxim.com/images/logo.png?install);*/
-                background: url(site/demo/images/logo.png);
+                background: url(http://ajaxim.com/images/logo.png);
                 width: 146px;
                 height: 44px;
                 margin: 0 0.5em 0 0;
