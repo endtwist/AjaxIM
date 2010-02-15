@@ -285,7 +285,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $configphp = preg_replace("/define\('(MYSQL_PREFIX)', '[^']+?'\);/", "define('$1', '" . $_POST['mysqlprefix'] . "');", $configphp);
 
     if(intval($_POST['needs_nodejs']) == 1) {
-        $configjs = preg_replace("/[\r\n]+/", "\n", file_get_contents('node/config.js'));
+        $configjs = preg_replace("/[\r\n]+/", "\n", file_get_contents('server/config.js'));
         
         // Replace the cookie name
         $configjs = preg_replace("/(name: )'[^']+?',/", "$1'" . $_POST['cookie'] . "',", $configjs);
@@ -313,7 +313,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         $node_url = $_POST['public_host'] . ":" . $_POST['public_port'];
             
         $imloadjs = file_get_contents('js/im.load.js');
-        $imloadjs = preg_replace("/(var nodehost = )'';/", "$1'" . $node_url . "'");
+        $imloadjs = preg_replace("/(var nodehost = )'';/", "$1'" . $node_url . "';", $imloadjs);
         $imljs = fopen('js/im.load.js', 'w');
         fwrite($imljs, $imloadjs);
         fclose($imljs);
@@ -412,7 +412,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                     var servers = <?php print json_encode($servers); ?>;
                     servers['None'] = {Description: 'None', Requirements: ['None']};
                     var selected_server = servers['None'];
-                    $('#server').live('click', function(e) {
+                    var update_server_list =  function(e) {
                         if(!(server = $('#server').val()))
                             server = 'None';
                             
@@ -420,7 +420,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $('#server-select .requirements').text(servers[server].Requirements.join(', '));
                         
                         selected_server = servers[server];
-                    });
+                    };
+                    $('#server').live('click', update_server_list).live('change', update_server_list);
                     </script>
                 </p>
                 
@@ -443,31 +444,35 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                     var db_engines = <?php print json_encode($dbs); ?>;
                     var engine = 'None';
                     db_engines['None'] = {Description: 'None', Requirements: ['None']};
-                    $('#db').live('click', function(e) {
+                    var update_db_list = function(e) {
                         if(!(engine = $('#db').val()))
                             engine = 'None';
                             
                         $('#db-select .description').text(db_engines[engine].Description);
                         $('#db-select .requirements').text(db_engines[engine].Requirements.join(', '));
-                    });
+                    };
+                    $('#db').live('click', update_db_list).live('change', update_db_list);
                     
-                    $('#db, #server').live('click', function() {
-                        if(engine == 'MySQL.php' && $.inArray('Database', selected_server.Requirements) != -1) {
-                            $('#please-install-db').fadeIn();
-                            $('#mysql-config').slideDown();
-                        } else {
-                            $('#please-install-db').fadeOut();
-                            $('#mysql-config').slideUp();
-                        }
-                        
-                        if($.inArray('Node.js', selected_server.Requirements) != -1) {
-                            $('#nodejs-config').slideDown();
-                            $('#needs_nodejs').val('1');
-                        } else {
-                            $('#nodejs-config').slideUp();
-                            $('#needs_nodejs').val('0');
-                        }
-                    });
+                    var update_reqs = function() {
+                        setTimeout(function() {
+                            if(engine == 'MySQL.php' && $.inArray('Database', selected_server.Requirements) != -1) {
+                                $('#please-install-db').fadeIn();
+                                $('#mysql-config').slideDown();
+                            } else {
+                                $('#please-install-db').fadeOut();
+                                $('#mysql-config').slideUp();
+                            }
+                            
+                            if($.inArray('Node.js', selected_server.Requirements) != -1) {
+                                $('#nodejs-config').slideDown();
+                                $('#needs_nodejs').val('1');
+                            } else {
+                                $('#nodejs-config').slideUp();
+                                $('#needs_nodejs').val('0');
+                            }
+                        }, 100);
+                    };
+                    $('#db, #server').live('click', update_reqs).live('change', update_reqs);
                     </script>
                 </p>
                 
@@ -530,7 +535,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <p>After configuration is complete, please see the <a href="http://ajaxim.com/installation">installation tutorial</a> to complete the standalone server setup.</p>
                 
                 <p>
-                    <span>Is <code>node/config.js</code> writable?</span>
+                    <span>Is <code>server/config.js</code> writable?</span>
                     <?php if(is_writable('server/config.js')) { ?>
                     <span class="writable">Yes.</span>
                     <?php } else { ?>
