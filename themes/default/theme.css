@@ -441,6 +441,7 @@ div#imjs-friends-panel form, div#imjs-friends-panel form p {
 }
 
     input#imjs-search-friends {
+        display: none; /* Search does not work yet. */
         font: 12px/14px Helvetica Neue, Helvetica, Arial, Calibri, Tahoma, Verdana, sans-serif;
         height: 16px;
         width: 194px;

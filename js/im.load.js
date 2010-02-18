@@ -16,8 +16,8 @@ var AjaxIM, AjaxIMLoadedFunction;
     var nodehost = '';
 
     var dependencies = [
-        ['jquery-1.3.2.js', function() { return (typeof window['jQuery'] != 'undefined'); }],
-        ['jquery.jsonp-1.1.0.js', function() { return (typeof jQuery['jsonp'] != 'undefined'); }],
+        ['jquery-1.4.1.min.js', function() { return (typeof window['jQuery'] != 'undefined'); }],
+        ['jquery.jsonp-1.1.3.min.js', function() { return (typeof jQuery['jsonp'] != 'undefined'); }],
         ['jquery.jstore-all-min.js', function() { return (typeof jQuery['jstore'] != 'undefined'); }],
         ['jquery.md5.js', function() { return (typeof jQuery['md5'] != 'undefined'); }],
         ['im.js', function() { return (typeof window['AjaxIM'] != 'object'); }]
