@@ -2,7 +2,7 @@
 <html>
     <head>
         <title>Ajax IM &mdash; Instant Messaging Framework</title>
-        <script type="text/javascript" src="js/jquery-1.3.2.js"></script>
+        <script type="text/javascript" src="js/jquery-1.4.1.min.js"></script>
         <style type="text/css">
             html, body {
                 margin: 0;
