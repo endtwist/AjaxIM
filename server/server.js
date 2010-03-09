@@ -686,8 +686,8 @@ function WebServer(host, port) {
             'Content-Type': 'text/plain',
             'Content-Length': nf.length
         });
-        this.response.sendBody(nf);
-        this.response.finish();
+        this.response.write(nf);
+        this.response.close();
     };
     
     this._parseCookies = function(str) {
@@ -741,8 +741,8 @@ function WebServer(host, port) {
                     'cache-control': 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
                     'pragma': 'no-cache'
                 });
-                response.sendBody(content);
-                response.finish();
+                response.write(content);
+                response.close();
             }
 
             handler.apply({request: request, response: response}, args.slice(1));
@@ -780,17 +780,17 @@ function MemcacheServer(host, port) {
     this._add = function(username, data) {
         if(typeof self._cb_login != 'function' ||
             !('user_id' in data) || !('session_id' in data)) {
-            this.send('NOT_STORED\r\n');
+            this.write('NOT_STORED\r\n');
         } else if(self._cb_login(username, data)) {
-            this.send('STORED\r\n');
+            this.write('STORED\r\n');
         } else {
-            this.send('NOT_STORED\r\n');
+            this.write('NOT_STORED\r\n');
         }
     };
     
     this._set = function(username, action, value) {
         if(!action.length || !value) {
-            this.send('NOT_STORED\r\n');
+            this.write('NOT_STORED\r\n');
         } else {
             var result = false;
             for(var axn in self._cb_custom) {
@@ -802,18 +802,18 @@ function MemcacheServer(host, port) {
             }
             
             if(result) {
-                this.send('STORED\r\n');
+                this.write('STORED\r\n');
             } else {
-                this.send('NOT_STORED\r\n');
+                this.write('NOT_STORED\r\n');
             }
         }
     };
     
     this._delete = function(username) {            
         if(typeof self._cb_logout == 'function' && self._cb_logout(username)) {
-            this.send('DELETED\r\n');
+            this.write('DELETED\r\n');
         } else {
-            this.send('NOT_FOUND\r\n');
+            this.write('NOT_FOUND\r\n');
         }
     };
     
@@ -822,12 +822,12 @@ function MemcacheServer(host, port) {
             var user = self._cb_getuser(username);
             if(user) {
                 var json_user = JSON.stringify(user);
-                this.send('VALUE ' + username + ' 0 ' + json_user.length + '\r\n')
-                this.send(json_user + '\r\n');
+                this.write('VALUE ' + username + ' 0 ' + json_user.length + '\r\n')
+                this.write(json_user + '\r\n');
             }
         }
                 
-        this.send('END\r\n');
+        this.write('END\r\n');
     };
     
     this._gets = function(list) {
@@ -843,11 +843,11 @@ function MemcacheServer(host, port) {
             }
     
             if(results.length) {
-                this.send(results.join(''));
+                this.write(results.join(''));
             }
         }
                 
-        this.send('END\r\n');
+        this.write('END\r\n');
     };
     
     this.start = function() {
@@ -856,7 +856,7 @@ function MemcacheServer(host, port) {
             
             var cmd = {};
             var incoming = '';
-            socket.addListener('receive', function(data) {
+            socket.addListener('data', function(data) {
                 incoming += data;
 
                 // We're in the middle of receiving some data, so we can't
