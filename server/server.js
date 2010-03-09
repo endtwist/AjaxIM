@@ -30,9 +30,8 @@
 var sys = require('sys'),
     http = require('http'),
     tcp = require('tcp'),
-    config = require('./config');
-
-try { url = require('url'); } catch(e) {}
+    config = require('./config'),
+    url = require('url');
 
 var AjaxIM = function(config) {
     var self = this;
@@ -74,11 +73,13 @@ var AjaxIM = function(config) {
         this.server = new WebServer(this.config.ports.public[1],
             this.config.ports.public[0]);
         
-        this.server.get('^/poll$', this.poll);
-        this.server.get('^/send$', this.send);
-        this.server.get('^/status$', this.status);
-        this.server.get('^/resume$', this.resume);
-        this.server.get('^/online$', this.online);
+        this.server.get([
+            ['^/poll$', this.poll],
+            ['^/send$', this.send],
+            ['^/status$', this.status],
+            ['^/resume$', this.resume],
+            ['^/online$', this.online]
+        ]);
         this.server.start();
         
         this.internalServer =
@@ -662,7 +663,12 @@ function WebServer(host, port) {
     
     this.urlMap = [];
     this.get = function(path, handler) {
-        this._map(path, 'GET', handler);
+        if(typeof path == 'array') {
+            for(var i = 0, l = path.length; i < l; i++)
+                this._map(path[i][0], 'GET', path[i][1]);
+        } else {
+            this._map(path, 'GET', handler);
+        }
     };
 
     this.post = function(path, handler) {
@@ -707,13 +713,11 @@ function WebServer(host, port) {
         http.createServer(function(request, response) {
             var handler = self._notFound, args = [];
             
-            if(typeof request['uri'] == 'undefined') {
-                uri = url.parse(request.url, true);
-                request['uri'] = {
-                    'path': uri.pathname,
-                    'params': uri.query || {}
-                };
-            }
+            uri = url.parse(request.url, true);
+            request['uri'] = {
+                'path': uri.pathname,
+                'params': uri.query || {}
+            };
             
             for(var i = 0; i < self.urlMap.length; i++) {
                 var map = self.urlMap[i];
@@ -725,9 +729,7 @@ function WebServer(host, port) {
             }
             
             request.setBodyEncoding('utf8');
-            
             request.cookies = self._parseCookies(request.headers['cookie']);
-            
             response.reply = function(code, obj) {
                 var content = JSON.stringify(obj);
                 content = request.uri.params.callback + '(' + content + ');';
