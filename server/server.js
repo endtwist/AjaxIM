@@ -663,7 +663,7 @@ function WebServer(host, port) {
     
     this.urlMap = [];
     this.get = function(path, handler) {
-        if(typeof path == 'array') {
+        if(typeof path == 'object') {
             for(var i = 0, l = path.length; i < l; i++)
                 this._map(path[i][0], 'GET', path[i][1]);
         } else {
