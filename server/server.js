@@ -31,7 +31,9 @@ var sys = require('sys'),
     http = require('http'),
     tcp = require('tcp'),
     config = require('./config'),
-    url = require('url');
+    md5 = require('./md5'),
+    url = require('url'),
+    querystring = require('querystring');
 
 var AjaxIM = function(config) {
     var self = this;
@@ -53,6 +55,7 @@ var AjaxIM = function(config) {
     // * {{{sessions}}} is a hash table of session ids with usernames as values.
     // * {{{debug}}} enables or disables debug messages from being output to the console. Set manually.
     // * {{{onlineCount}}} contains the number of users online at any one moment.
+    // * {{{onlineList}}} is a JSON string of currently online users.
     this.users = {};
     this.sessions = {};
     
@@ -61,6 +64,7 @@ var AjaxIM = function(config) {
     this.debug = true;
     
     this.onlineCount = 0;
+    this.onlineList = '{}';
     
     // === {{{ AjaxIM.init() }}} ===
     //
@@ -78,7 +82,20 @@ var AjaxIM = function(config) {
             ['^/send$', this.send],
             ['^/status$', this.status],
             ['^/resume$', this.resume],
-            ['^/online$', this.online]
+            ['^/online$', this.online],
+            ['^/online_count$', this.onlineCount]
+        ]);
+        this.server.post([
+            ['^/user$', this.initUser],
+            ['^/send$', this.send],
+            ['^/send_raw$', this.sendRaw]
+            ['^/status$', this.status]
+        ]);
+        this.server.put([
+            ['^/user/friends$', this.addFriend]
+        ]);
+        this.server.del([
+            ['^/user/friends$', this.removeFriend]
         ]);
         this.server.start();
         
@@ -122,6 +139,7 @@ var AjaxIM = function(config) {
         this.internalServer.start();
         
         this._start_gc();
+        this._start_cache();
     }
     
     // === //private//\\ {{{ AjaxIM._start_gc() }}} ===
@@ -159,6 +177,31 @@ var AjaxIM = function(config) {
                 }
             }
         }, 3600000); // 1 hour
+    };
+    
+    // === //private//\\ {{{ AjaxIM._start_cache() }}} ===
+    //
+    // Starts any caching operations for specific data sets, such as the online
+    // user list.
+    this._start_cache = function() {
+        var self = this;
+        
+        // Cache user list in memory
+        setInterval(function() {
+            var users = [];
+            for(var username in self.users) {
+                var user = self.users[username];
+                if(user.status.s > 0) {
+                    users.push({
+                        username: user.username,
+                        user_id: user.user_id,
+                        status: user.status,
+                        session_id: user.session_id
+                    });
+                }
+            }
+            self.onlineList = self.apiGetUserList();
+        }, 2000);
     };
     
     // === //private//\\ {{{ AjaxIM._session(request, provide) }}} ===
@@ -218,7 +261,7 @@ var AjaxIM = function(config) {
     //
     // ==== Parameters ====
     // * {{{str}}} is the debug string.
-    this._d = function(str) {      
+    this._d = function(str) {
         if(this.debug) {
             var addZero = function(str) { return str < 10 ? '0' + str : str; };
             
@@ -226,11 +269,42 @@ var AjaxIM = function(config) {
             var d_str = addZero(d.getMonth() + 1) + '/' + addZero(d.getDate()) + '/' + d.getFullYear() + ' ' +
                 addZero(d.getHours()) + ':' + addZero(d.getMinutes()) + ':' + addZero(d.getSeconds());
                 
-            sys.puts('[' + d_str + '] ' + str);
+            sys.puts(arguments.callee.caller.name + ': [' + d_str + '] ' + str);
         }
     };
     
-    // === //private//\\ {{{ AjaxIM._initUser(username, data) }}} ===
+    // === //private//\\ {{{ AjaxIM._authReq(request) }}} ===
+    //
+    // Checks that the private REST API key was sent in the request. If not, the
+    // server responds with a 403 error code ("Forbidden").
+    this._authReq = function(qs, response) {
+        if(!('api_key' in qs) ||
+            qs.api_key != this.config.api_key) {
+            
+            response.reply(403, {'e': 'forbidden'});
+            return false;
+        }
+        
+        return true;
+    };
+    
+    // === //private//\\ {{{ AjaxIM._verifyReq(request) }}} ===
+    //
+    // Verifies that the request is actually from somewhere in our domain.
+    // If not, the server responds with a 403 error code ("Forbidden").
+    this._verifyReq = function(request, response) {
+        if(!('xreq' in request.cookies[this.config.cookie.name]) ||
+           !('xreq' in request.uri.params) ||
+            request.uri.params.xreq != request.cookies[this.config.cookie.name].xreq) {
+            
+            response.reply(403, {'e': 'forbidden'});
+            return false;
+        }
+        
+        return true;
+    };
+    
+    // === {{{ AjaxIM.initSession(username, data) }}} ===
     //
     // Initializes a user session and adds the user to the users list. Additionally,
     // it stores a callback function which will push data directly to this user. A
@@ -244,58 +318,59 @@ var AjaxIM = function(config) {
     // ** {{{session_id}}} is the user's unique session id (used to (re)connect to the server).
     // ** {{{friends}}} is the friends list.
     // ** {{{guest}}} (optional) defines whether or not this is a "guest" (temporary) user.
-    this._initUser = function(username, data) {
-        if(data['user_id']) {
-            self._d('User [' + username + '] has connected. Adding to user hash and notifying friends.');
-
-            if(!(username in self.users)) {
-                self.users[username] = {
-                    username: username,
-                    user_id: data.user_id,
-                    session_id: data.session_id,
-                    last_active: Date.now(),
-                    friends: data.friends,
-                    status: {s: 1, m: ''},
-                    guest: data['guest'] ? true : false,
-                    callback: function(msg) {
-                        var cbs = self.users[username]._callbacks;
-                        if(msg)
-                            self.users[username]._queue.push(msg);
-                        
-                        if(cbs.length) {
-                            for(var i = 0; i < cbs.length; i++)
-                                cbs[i](self.users[username]._queue);
-                            self.users[username]._callbacks = [];
-                            self.users[username]._queue = [];
-                        } else {
-                            if(self.users[username]._callbackAttempts < 3) {
-                                setTimeout(function() {
-                                    try {
-                                        self.users[username].callback();
-                                        self.users[username]._callbackAttempts++;
-                                    } catch(e) {}
-                                }, 150);
-                            } else {
-                                self.users[username]._callbackAttempts = 0;
-                            }
-                        }
-                    },
-                    _callbacks: [],
-                    _queue: [],
-                    _callbackAttempts: 0
-                };
+    this.initSession = function() {
+        if(!self._authReq(this.request)) return false;
+        
+        if('username' in this.params) {
+            if(username in self.users) {
+                self._d('Session already exists for user [' + username + '].');
+                
+                this.response.reply(200, {r: 'success', session_id: self.users[username].session_id});
+            } else {
+                self._d('Session created for user [' + username + ']. Adding to session hash.');
+    
+                var session_id;
+                do {
+                    session_id = md5.hex_md5(Date.now().toString() + username)
+                } while(session_id in self.sessions);
+                
+                self.sessions[session_id] = new Session(username, this.params.friends);
+                
+                this.response.reply(200, {r: 'success', session_id: session_id});
+            }
+        } else {
+            this.response.reply(200, {r: 'error', e: 'missing username'});
+        }
+    };
+    
+    this.initUser = function() {
+        var session_id = this.params['session_id'] ||
+                         (self.config.cookie.name in this.request.cookies ?
+                            this.request.cookies[self.config.cookie.name].sid :
+                            '');
+                         
+        if(session_id && (this.params.session_id in self.sessions)) {
+            var session = self.sessions[this.params.session_id];
+            
+            var friends = {};
+            for(var i = 0, l = session.friends.length; i < l; i++) {
+                var friend = session.friends[i][0];
+                var group = session.friends[i][1];
+                
+                friends[friend] = {g: group}
+                if(friend in self.users)
+                    friends[friend].s = self.users[friend].status;
+                else
+                    friends[friend].s = {s: 0, m: ''};
+            }
+            
+            if(!(username in self.users)) {                
+                self.users[username] =
+                    new User(session.username, friends, this.params.session_id, this.params['guest'] || false);
                 self.onlineCount++;
             }
-
-            self.sessions[data.session_id] = {
-                username: username,
-                user_id: data.user_id,
-                friends: data.friends,
-                last_active: Date.now()
-            };
-            return true;
-        } else {
-            return false;
+            
+            this.response.reply(200, {r: 'connected', f: friends});
         }
     };
     
@@ -309,16 +384,16 @@ var AjaxIM = function(config) {
             return false;
             
         var user = self.users[username];
-        if(user['guest']) {
+        if(user.guest) {
             // User was a guest, so notify everyone that they logged off and remove their session.
             self.apiBroadcastRaw('from', username, {t: 's', s: username, r: '', m: '0:'});
             delete self.sessions[self.users[username].session_id];
         } else {
             user.friends.forEach(function(f) {
                 if(f.u in self.users) {
-                    for(var i=0; i < self.users[f.u]['friends'].length; i++) {
-                        if(self.users[f.u]['friends'][i].u == username && self.users[f.u]['friends'][i].u != user.username) {
-                            self.users[f.u]['friends'][username].s = 0;
+                    for(var i=0; i < self.users[f.u].friends.length; i++) {
+                        if(self.users[f.u].friends[i].u == username && self.users[f.u].friends[i].u != user.username) {
+                            self.users[f.u].friends[i].s = 0;
                             break;
                         }
                     }
@@ -355,8 +430,8 @@ var AjaxIM = function(config) {
             var response = this.response;
             
             user._callbacks.push(function(msg) { response.reply(200, msg); });
-            self.users[user.username].last_active = Date.now();
-            self.sessions[user.session_id].last_active = Date.now();
+            self.users[user.username].active();
+            self.sessions[user.session_id].active();
         }
     };
     
@@ -370,7 +445,7 @@ var AjaxIM = function(config) {
         } else {
             if(!(user in self.users)) {
                 session = self._session(this.request, 'session');
-                session['session_id'] = this.request.cookies[self.config.cookie.name].sid;
+                session.session_id = this.request.cookies[self.config.cookie.name].sid;
                 self._initUser(user, session);
             }
             
@@ -398,7 +473,7 @@ var AjaxIM = function(config) {
            to in self.users &&
            self.users[to].callback
         ) {
-            var time = Math.round((new Date()).getTime() / 1000);
+            var time = Math.round(Date.now() / 1000);
             self.users[to].callback({
                 t: 'm',
                 s: user.username,
@@ -410,8 +485,8 @@ var AjaxIM = function(config) {
         
         self._d('User [' + user.username + '] sent a message to [' + to + '] ' + (sent ? 'successfully.' : 'UNSUCCESSFULLY.'));
 
-        self.users[user.username].last_active = Date.now();
-        self.sessions[user.session_id].last_active = Date.now();
+        self.users[user.username].active();
+        self.sessions[user.session_id].active();
         this.response.reply(200, {'sent': sent});
     };
 
@@ -452,15 +527,30 @@ var AjaxIM = function(config) {
         self._d('User [' + user.username + '] set his/her status to [' + statusMsg + ']. Friends notified.');
         
         self.users[user.username].status = {s: status, m: this.request.uri.params.message};
-        self.users[user.username].last_active = Date.now();
-        self.sessions[user.session_id].last_active = Date.now();
+        self.users[user.username].active();
+        self.sessions[user.session_id].active();
         this.response.reply(200, {status_updated: status_updated});
     };
     
     // === {{{ AjaxIM.online() }}} ===
     //
-    // Return a count of the number of online users.
+    // Return a list of currently signed in users and their statuses
+    // sans the status messages.
     this.online = function() {
+        var user = self._session(this.request, 'object');
+                
+        if(!user) {
+            self._d('An unknown user tried to retrieve a list of online users without being authenticated.');
+            return this.response.reply(200, {'r': 'error', 'e': 'no session found'});
+        }
+        
+        this.response.reply(200, this.onlineList);
+    };
+    
+    // === {{{ AjaxIM.onlineTotal() }}} ===
+    //
+    // Return a count of the number of online users.
+    this.onlineTotal = function() {
         this.response.reply(200, {count: self.onlineCount});
     };
     
@@ -655,29 +745,92 @@ var AjaxIM = function(config) {
     };
 };
 
+// == User Object ==
+function User(username, friends, user_id, session_id, guest) {
+    this.username = username;
+    this.friends = friends;
+    this.statue = {s: 1, m: ''};
+    this.user_id = user_id || 0;
+    this.session_id = session_id;
+    this.last_active = Date.now();
+    this.guest = guest || false;
+    
+    this._callbacks = [];
+    this._queue = [];
+    this._callbackAttempts = [];
+    
+    this.callback = function(msg) {
+        if(msg)
+            this._queue.push(msg);
+        
+        if(this._callbacks.length) {
+            for(var i = 0; i < this._callbacks.length; i++)
+                this._callbacks[i](this._queue);
+            this._callbacks = [];
+            this._queue = [];
+        } else {
+            if(this._callbackAttempts < 3) {
+                var self = this;
+                setTimeout(function() {
+                    try {
+                        self.callback();
+                        self._callbackAttempts++;
+                    } catch(e) {}
+                }, 150);
+            } else {
+                this._callbackAttempts = 0;
+            }
+        }
+    };
+    
+    this.active = function() {
+        this.last_active = Date.now();
+    };
+}
+
+// == Session Object ==
+function Session(username, friends, user_id) {
+    this.username = username;
+    this.friends = friends;
+    this.user_id = user_id;
+    this.last_active = Date.now();
+    
+    this.active = function() {
+        this.last_active = Date.now();
+    }
+};
+
 // == WebServer Class ==
 function WebServer(host, port) {
     var self = this;
     this.host = host;
     this.port = port;
-    
     this.urlMap = [];
+    
     this.get = function(path, handler) {
-        if(typeof path == 'object') {
-            for(var i = 0, l = path.length; i < l; i++)
-                this._map(path[i][0], 'GET', path[i][1]);
-        } else {
-            this._map(path, 'GET', handler);
-        }
+        this._map(path, 'GET', handler);
     };
 
     this.post = function(path, handler) {
         this._map(path, 'POST', handler);
     };
     
+    this.put = function(path, handler) {
+        this._map(path, 'PUT', handler);
+    };
+    
+    this.del = function(path, handler) {
+        this._map(path, 'DELETE', handler);
+    };
+    
     this._map = function(path, type, handler) {
-        var path_regex = new RegExp(path);
-        this.urlMap.push([path_regex, type, handler]);
+        if(typeof path != 'object')
+            path = [[path, handler]];
+
+        for(var i = 0, l = path.length; i < l; i++) {
+            var path_regex = new RegExp(path[i][0]);
+            this.urlMap.push([path_regex, type, path[i][1]]);
+        }
     };
 
     this._notFound = function() {
@@ -729,23 +882,43 @@ function WebServer(host, port) {
             }
             
             request.setBodyEncoding('utf8');
-            request.cookies = self._parseCookies(request.headers['cookie']);
-            response.reply = function(code, obj) {
-                var content = JSON.stringify(obj);
-                content = request.uri.params.callback + '(' + content + ');';
-                
-                response.sendHeader(code, {
-                    'content-type': 'text/html',
-                    'content-length': content.length,
-                    'expires': 'Mon, 26 Jul 1997 05:00:00 GMT',
-                    'cache-control': 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
-                    'pragma': 'no-cache'
-                });
-                response.write(content);
-                response.close();
-            }
-
-            handler.apply({request: request, response: response}, args.slice(1));
+            request.addListener('data', function(body) {
+                if(request.method != 'GET')
+                    request.uri.params = querystring.parse(body);
+            }).addListener('end', function() {
+                request.cookies = self._parseCookies(request.headers['cookie']);
+                response._cookies = [];
+                response.setCookie = function(name, value, expires, path, domain) {
+                    expires = expires || new Date(+new Date + 30 * 24 * 60 * 60 * 1000);
+                    response._cookies.push(name + '=' + value +
+                        '; expires=' + expires +
+                        (path ? '; path=' + path : '') +
+                        (domain ? '; domain=' + domain : '')
+                    );
+                };
+                response.clearCookie = function(name, path, domain) {
+                    var expires = new Date(+new Date - 30 * 24 * 60 * 60 * 1000);
+                    response.setCookie(name, '', expires, path, domain);
+                };
+                response.reply = function(code, obj) {
+                    var content = JSON.stringify(obj);
+                    content = request.uri.params.callback + '(' + content + ');';
+                    var headers = {
+                        'content-type': 'text/html',
+                        'content-length': content.length,
+                        'expires': 'Mon, 26 Jul 1997 05:00:00 GMT',
+                        'cache-control': 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
+                        'pragma': 'no-cache'
+                    };
+                    if(response._cookies.length)
+                        headers['set-cookie'] = response._cookies.join(', ');
+                    response.sendHeader(code, headers);
+                    response.write(content);
+                    response.close();
+                };
+    
+                handler.apply({request: request, response: response, params: request.uri.params}, args.slice(1));
+            });
         }).listen(this.port, this.host);
     };
 }

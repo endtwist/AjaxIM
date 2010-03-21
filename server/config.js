@@ -17,6 +17,13 @@ exports.ports = {
     private: [11998, 'localhost']
 };
 
+// === API Key ===
+//
+// This is the **private** API key that is used for any REST calls to the
+// server. Please change this key to something long and random. You should
+// never use this key on the client side!
+exports.api_key = 'FG34tbNW$n5aw4E6Y&U&6inBFDs';
+
 // === {{{ cookie }}} ===
 //
 // Define the cookie name and how long a session will be stored on the server.
