@@ -78,6 +78,7 @@ var AjaxIM = function(config) {
             this.config.ports.public[0]);
         
         this.server.get([
+            ['^/init$', this.initUser],
             ['^/poll$', this.poll],
             ['^/send$', this.send],
             ['^/status$', this.status],
@@ -86,7 +87,7 @@ var AjaxIM = function(config) {
             ['^/online_count$', this.onlineCount]
         ]);
         this.server.post([
-            ['^/user$', this.initUser],
+            ['^/user$', this.initSession],
             ['^/send$', this.send],
             ['^/send_raw$', this.sendRaw]
             ['^/status$', this.status]
@@ -219,7 +220,7 @@ var AjaxIM = function(config) {
     // ** {{{object}}} checks for the existence of the session //and// the existence of an active session (the user is currently logged in), and returns the user object, if found.
     this._session = function(request, provide) {
         if(this.config.cookie.name in request.cookies) {
-            try {
+           try {
                 var session_id = request.cookies[this.config.cookie.name].sid;
 
                 if(session_id in this.sessions) {
@@ -353,11 +354,11 @@ var AjaxIM = function(config) {
             var session = self.sessions[this.params.session_id];
             
             var friends = {};
-            for(var i = 0, l = session.friends.length; i < l; i++) {
+            for(var i = 0, sf = session.friends.length; i < sf; i++) {
                 var friend = session.friends[i][0];
                 var group = session.friends[i][1];
                 
-                friends[friend] = {g: group}
+                friends[friend] = {g: group};
                 if(friend in self.users)
                     friends[friend].s = self.users[friend].status;
                 else
@@ -370,7 +371,18 @@ var AjaxIM = function(config) {
                 self.onlineCount++;
             }
             
+            if(!(self.config.cookie.name in this.request.cookies)) {
+                this.response.setCookie(self.config.cookie.name, {
+                    user: username,
+                    sid: this.params.session_id
+                },
+                (+new Date + self.config.cookie.period * 60 * 60 * 1000)
+                '/', self.config.cookie.domain);
+            }
+            
             this.response.reply(200, {r: 'connected', f: friends});
+        } else {
+            this.response.reply(200, {r: 'error', e: 'no session found'});
         }
     };
     
@@ -890,6 +902,8 @@ function WebServer(host, port) {
                 response._cookies = [];
                 response.setCookie = function(name, value, expires, path, domain) {
                     expires = expires || new Date(+new Date + 30 * 24 * 60 * 60 * 1000);
+                    if(typeof value == "object")
+                        value = JSON.stringify(value);
                     response._cookies.push(name + '=' + value +
                         '; expires=' + expires +
                         (path ? '; path=' + path : '') +

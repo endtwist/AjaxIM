@@ -36,5 +36,6 @@ exports.api_key = 'FG34tbNW$n5aw4E6Y&U&6inBFDs';
 // back in automatically, as their cookie will have been deleted.
 exports.cookie = {
     name: 'ajaxim_session',
-    period: 8760
+    period: 8760,
+    domain: '.localdomain'
 };
