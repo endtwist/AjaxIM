@@ -1,4 +1,7 @@
-var utils = require('express/utils');
+var utils = require('express/utils'),
+    events = require('events'),
+    chat = require('./chat'),
+    sys = require('sys');
 
 var User = Base.extend({
     constructor: function(id, data) {
@@ -6,7 +9,25 @@ var User = Base.extend({
         this.connection = null;
         this.listeners = [];
         this.message_queue = [];
+        this.convos = {};
+        
+        Session.IM.authentication.friends(data.username, (function(friends) {
+            this.friends = friends;
+        }).bind(this));
+        
         this._data = data;
+
+        this.events = new events.EventEmitter();
+        this.events.addListener('status', function(value) {
+            chat.AjaxIM.events.emit('update', new chat.Status(this, value));
+        });
+        
+        chat.AjaxIM.events.addListener('update', (function(package) {
+            if(this.friends.indexOf(package.user))
+                this.notify(package);
+        }).bind(this));
+                
+        chat.AjaxIM.users.push(this);
     },
 
     connected: function(conn) {
@@ -32,13 +53,8 @@ var User = Base.extend({
             code = 200;
         }
 
-        if(typeof message != 'string') {
-            try {
-                message = JSON.encode(message);
-            } except(e) {
-                throw new Error('Could not JSON encode message content!');
-            }
-        }
+        if(typeof message != 'string')
+            message = message.toString();
 
         if(type == 'connection' && this.connection) {
             this.connection.respond(code, message, 'UTF-8');
@@ -46,16 +62,25 @@ var User = Base.extend({
             if(!this.listeners.length)
                 this.message_queue.push(arguments);
 
-            var notify_run, self = this;
+            var notify_run, cx = this.listeners.slice();
             (notify_run = function(conn) {
                 return function() {
-                    if(!conn) (callback ? callback() : return);
+                    if(!conn) {
+                        if(callback) callback();
+                        return;
+                    }
 
-                    conn.respond(code, message,
-                                 notify_run(self.listeners.pop()));
+                    conn.respond(code, message, 'UTF-8',
+                                 notify_run(cx.shift()));
                 };
-            })(this.listeners.pop())();
+            })(cx.shift())();
         }
+    },
+    
+    signoff: function(callback) {
+        chat.AjaxIM.events.emit('update', new chat.Offline(this));
+        
+        if(callback) callback()
     },
     
     get: function(key, def) {
@@ -64,6 +89,15 @@ var User = Base.extend({
             return this._data[key];
         else
             return def || false;
+    },
+    
+    get status() {
+        return this.status;
+    },
+    
+    set status(value) {
+        this.status = value;
+        this.events.emit('status', value);
     }
 });
 
@@ -72,24 +106,41 @@ Store.Memory.IM = Store.Memory.extend({
 
     constructor: function(options) {
         Store.Memory.call(this);
-        this.auth = options.authenticate;
+        this.auth = options.authentication;
     },
 
     fetch: function(req, callback) {
-        var sid = req.cookie(this.auth.cookie);
+        var sid = req.cookie(this.auth.cookie),
+            self = this;
         
         if(sid && this.store[sid]) {
-            callback(null, this.store[sid], false);
+            callback(null, this.store[sid]);
         } else {
-            this.generate(req, callback);
+            this.generate(sid, req, function(err, session) {
+                self.commit(session);
+                callback(err, session);
+            });
+        }
+    },
+    
+    reap: function(ms) {
+        var threshold = +new Date(Date.now() - ms),
+            sids = Object.keys(this.store);
+        for(var i = 0, len = sids.length; i < len; ++i) {
+            this.store[sids[i]].signoff((function() {
+                this.destroy(sids[i]);
+            }).bind(this));
         }
     },
 
-    generate: function(req, callback) {
-        if(data = this.auth.authenticate(req)) {
-            var sid = req.cookie(this.auth.cookie);
-            callback(null, new User(sid, data), true);
-        }
+    generate: function(sid, req, callback) {
+        this.auth.authenticate(req, function(data) {
+            if(data) {
+                callback(null, new User(sid, data));
+            } else {
+                callback(true);
+            }
+        });
     }
 });
 
@@ -106,6 +157,10 @@ Session.IM = Plugin.extend({
             setInterval(function(self) {
                 self.store.reap(self.lifetime || (1).day);
             }, this.reapInterval || this.reapEvery || (1).hour, this);
+        },
+        
+        get: function(session_id) {
+            return this.store.store[session_id] || false;
         }
     },
 
@@ -114,7 +169,7 @@ Session.IM = Plugin.extend({
             if(event.request.url.pathname === '/favicon.ico')
                 return;
 
-            Session.IM.store.fetch(event.request, function(err, session, is_new) {
+            Session.IM.store.fetch(event.request, function(err, session) {
                 if(err) return callback(err);
 
                 event.request.session = session;
@@ -122,15 +177,15 @@ Session.IM = Plugin.extend({
 
                 if(event.request.url.pathname == '/listen') {
                     session.listener(event.request);
-
-                    callback();
-                    if(is_new) session.notify({type: 'noop'});
-                    else if(session.message_queue.length)
-                        session._send(session.message_queue.shift());
+                    Session.IM.store.commit(event.request.session);
+                    
+                    if(msg = session.message_queue.shift())
+                        session._send(msg);
                 } else {
                     session.connection = event.request;
-                    callback();
                 }
+                
+                callback();
             });
 
             return true;

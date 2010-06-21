@@ -12,7 +12,7 @@
 //
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -25,13 +25,16 @@
 //
 var sys = require('sys');
 
-require.paths.unshift('express/lib');
+require.paths.unshift(require.paths[0] + '/express');
 require('express');
 require('express/plugins');
 Object.merge(global, require('ext'));
-Object.merge(global, require('./session.js')); // Ugly.
+Object.merge(global, require('./session')); // Ugly.
 
-require('settings.js');
+Object.merge(global, require('./settings'));
+try { Object.merge(global, require('./settings.local')); } catch(e) {}
+
+var chat = require('./chat');
 
 configure('development', function() {
     use(Logger);
@@ -44,134 +47,53 @@ configure(function() {
     use(Session.IM, {lifetime: (15).minutes,
                      reapInterval: (1).minute,
                      authentication:
-                        require('libs/authenticate/' + AUTH_LIBRARY)
+                        require('./libs/authenticate/' + AUTH_LIBRARY)
                     });
     set('root', __dirname);
 });
 
-var AjaxIM = new Class({
-    // === {{{ AjaxIM.constructor() }}} ===
-    //
-    // Initializes the frontend webserver and the backend Memcache server, which provides
-    // and easy-to-use API for controlling the server from other scripts.
-    constructor: function() {
-        if(typeof this.config.port != 'number')
-            throw new TypeError();
+get('/test_cookie', function() {
+    var utils = require('express/utils');
+    this.cookie('sessionid', utils.uid());
+    this.respond(200, 'cookie set');
+});
 
-        get('/listen', function() {
-            // Do nothing.
-        });
-        
-        post('/send', function() {
-            this.send()
-        });
-        
-        get('/status', this.status);
+get('/listen', function() {
+    // Do nothing.
+});
 
-        run(PORT, HOST);
+get('/message/user/:username', function(username) {
+    chat.AjaxIM.messageUser(this.session, username,
+                            new chat.Message(
+                                this.session,
+                                this.param('body') || ''
+                            ));
+});
+
+post('/message/user/:username', function(username) {
+    chat.AjaxIM.messageUser(this.session, username,
+                            new chat.Message(
+                                this.session,
+                                this.params.post['body'] || ''
+                            ));
+});
+
+post('/message/user/:username/typing', function(username) {
+    if('state' in this.params.post &&
+       -~chat.TYPING_STATES.indexOf('typing' + this.params.post.state)) {
+        chat.AjaxIM.messageUser(this.session, username,
+                                new chat.Status(
+                                    this.session,
+                                    'typing' + this.params.post.state
+                                ));
     }
+});
 
-    // === {{{ AjaxIM.send() }}} ===
-    //
-    // Send a message to the user specified in the query and return a
-    // result declaring whether or not the message was sent. Messages
-    // are only sent if the user has an active session.
-    this.send = function() {
-        var sent = false;
+post('/status', function() {
+    if('status' in this.params.post &&
+       -~chat.STATUSES.indexOf(this.params.post.status)) {
+       this.session.status = this.params.post.status;
+    }
+});
 
-        var user = self._session(this.request, 'object');
-        var to = this.request.uri.params['to'] || '';
-        
-        if(!user) {
-            self._d('An unknown user tried to send a message to [' + to + '] without being authenticated.');
-            return this.response.reply(200, {'r': 'error', 'e': 'no session found'});
-        }
-        
-        if(user.username && to &&
-           to in self.users &&
-           self.users[to].callback
-        ) {
-            var time = Math.round(Date.now() / 1000);
-            self.users[to].callback({
-                t: 'm',
-                s: user.username,
-                r: to,
-                m: this.request.uri.params.message
-            });
-            sent = true;
-        }
-        
-        self._d('User [' + user.username + '] sent a message to [' + to + '] ' + (sent ? 'successfully.' : 'UNSUCCESSFULLY.'));
-
-        self.users[user.username].active();
-        self.sessions[user.session_id].active();
-        this.response.reply(200, {'sent': sent});
-    };
-
-    // === {{{ AjaxIM.status() }}} ===
-    //
-    // Update a user's status based on the query parameters; this includes
-    // both their status code and any custom status message associated with
-    // that code. If the status update is successful, send an update to the
-    // user's friends.
-    this.status = function() {
-        var status_updated = false;
-
-        var user = self._session(this.request, 'object');
-                
-        if(!user) {
-            self._d('An unknown user tried to change their status without being authenticated.');
-            return this.response.reply(200, {'r': 'error', 'e': 'no session found'});
-        }
-        
-        var status = this.request.uri.params.status;
-        var statusMsg = status + ':' + this.request.uri.params.message;
-        
-        user.friends.forEach(function(f) {
-            if(f.u in self.users) {
-                var group = null;
-                for(var i=0; i < self.users[f.u]['friends'].length; i++) {
-                    if(self.users[f.u]['friends'][i].u == user.username) {
-                        self.users[f.u]['friends'][i].s = status;
-                        group = self.users[f.u]['friends'][i].g;
-                        break;
-                    }
-                }
-                
-                self.users[f.u].callback({t: 's', s: user.username, r: f.u, m: statusMsg, g: group});
-            }
-        });
-        
-        self._d('User [' + user.username + '] set his/her status to [' + statusMsg + ']. Friends notified.');
-        
-        self.users[user.username].status = {s: status, m: this.request.uri.params.message};
-        self.users[user.username].active();
-        self.sessions[user.session_id].active();
-        this.response.reply(200, {status_updated: status_updated});
-    };
-    
-    // === {{{ AjaxIM.online() }}} ===
-    //
-    // Return a list of currently signed in users and their statuses
-    // sans the status messages.
-    this.online = function() {
-        var user = self._session(this.request, 'object');
-                
-        if(!user) {
-            self._d('An unknown user tried to retrieve a list of online users without being authenticated.');
-            return this.response.reply(200, {'r': 'error', 'e': 'no session found'});
-        }
-        
-        this.response.reply(200, this.onlineList);
-    };
-    
-    // === {{{ AjaxIM.onlineTotal() }}} ===
-    //
-    // Return a count of the number of online users.
-    this.onlineTotal = function() {
-        this.response.reply(200, {count: self.onlineCount});
-    };
-};
-
-var im = new AjaxIM(config);
-im.init();
+run(APP_PORT, APP_HOST);

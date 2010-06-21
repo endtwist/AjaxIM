@@ -19,7 +19,7 @@ Install `Node.js`:
     make install
 
 Install Node Package Manager (`npm`):
-    See instructions at [isaacs' npm git repo](http://github.com/isaacs/npm).
+    See instructions at http://github.com/isaacs/npm.
 
 Install `Express.js`:
     npm install express
