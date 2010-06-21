@@ -1,0 +1,51 @@
+#!/bin/sh
+# Ajax IM build script
+# Automatically exports, minifies, and packages Ajax IM
+
+# Path to checked-out repository
+AJAXIM=$HOME/Sites/AjaxIM
+AJAXIMBUILD=$HOME/Sites/AjaxIMBuild
+YUIC=$HOME/Sites/yuicompressor-2.4.2.jar
+
+echo "Ajax IM, (c) 2005-2010 Joshua Gross"
+
+cd $AJAXIM/..
+echo "Cleaning up any old folders... \c"
+rm -rf AjaxIMBuild
+mkdir AjaxIMBuild
+echo "Done."
+
+cd $AJAXIM
+
+echo "Checking out repository for Development and Minified versions... \c"
+git checkout-index -a -f $AJAXIMBUILD/AjaxIMDevelopment/
+git checkout-index -a -f $AJAXIMBUILD/AjaxIMMinified/
+echo "Done."
+
+echo "Building Development .tar.gz file... \c"
+cd $AJAXIMBUILD/AjaxIMDevelopment
+tar -cf AjaxIM_v$1.tar *
+gzip -9 AjaxIM_v$1.tar
+mv AjaxIM_v$1.tar.gz $AJAXIM/build
+cd ..
+rm -rf AjaxIMDevelopment
+echo "Done."
+
+echo "Compacting Minified copy with YUI Compressor... \c"
+cd AjaxIMMinified
+java -jar $YUIC -o js/im.min.js js/im.js
+mv im.min.js im.js
+java -jar $YUIC -o js/im.load.min.js js/im.load.js
+mv im.load.min.js im.load.js
+java -jar $YUIC -o js/jquery.md5.min.js js/jquery.md5.js
+mv jquery.md5.min.js jquery.md5.js
+echo "Done."
+
+echo "Building Minified .tar.gz file... \c"
+cd AjaxIMMinified
+tar -cf AjaxIM_v$1_min.tar *
+gzip -9 AjaxIM_v$1_min.tar
+mv AjaxIM_v$1_min.tar.gz ..
+cd ..
+rm -rf AjaxIMMinified
+echo "Done."

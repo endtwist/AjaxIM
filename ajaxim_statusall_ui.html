@@ -1,0 +1,30 @@
+setInterval X000ms
+    |
+    |
+    V
+Online user list --> JSON --> list.txt
+
+getOnlineUserList --> list.txt
+                         |
+                         |
+                         V
+                       Output
+                       
+-------------------------------------------
+
+AjaxIM.init({
+    ...
+    statusButton: true/false,
+    onlineUserList: true/false,
+    friendsList: true/false,
+    registration: true/false,
+    login: true/false
+});
+                                                .- All Users
+                                                |   .- Register/Login || Set Status
+                                                |   |
+                                                V   V
+ _____________________________________________________
+|                                   | Friends | ◊ | • |
+ —————————————————————————————————————————————————————
+
