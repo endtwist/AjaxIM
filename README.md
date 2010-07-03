@@ -10,10 +10,10 @@ It uses AJAX to create a real-time (or near real-time) IM environment that can b
 
 ## Installation
 
-Install `Node.js`:
-    wget http://nodejs.org/dist/node-v0.1.98.tar.gz
-    tar xzf node-v0.1.98.tar.gz
-    cd node-v0.1.98
+Install `Node.js` (known to work with v0.1.98+):
+    wget http://nodejs.org/dist/node-v0.1.100.tar.gz
+    tar xzf node-v0.1.100.tar.gz
+    cd node-v0.1.100
     ./configure
     make
     make install
