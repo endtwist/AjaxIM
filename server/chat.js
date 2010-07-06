@@ -3,10 +3,6 @@ var utils = require('express/utils'),
     sys = require('sys');
 
 exports.AjaxIM = AjaxIM = new (new Class({
-    // === {{{ AjaxIM.constructor() }}} ===
-    //
-    // Initializes the frontend webserver and the backend Memcache server, which provides
-    // and easy-to-use API for controlling the server from other scripts.
     constructor: function() {
         this.users = [];
         this.events = new events.EventEmitter();
@@ -27,16 +23,15 @@ exports.AjaxIM = AjaxIM = new (new Class({
 
                 session.convos[user] =
                     new exports.Conversation(session.id, user_id);
-
-                session.respond(new exports.Success('sent'));
             } catch(e) {
-                session.respond(new exports.Error('user not online'));
+                session.respond(new exports.Error('user offline'));
                 return;
             }
         }
 
         try {
             session.convos[user].send(package);
+            session.respond(new exports.Success('sent'));
         } catch(e) {
             session.respond(new exports.Error(e.description));
         }
@@ -65,10 +60,6 @@ var Package = new Class({
     _sanitize: function(content) {
         // strip HTML
         return content.replace(/<(.|\n)*?>/g, '');
-    },
-
-    associate: function(room) {
-        this.room = room.id;
     }
 });
 
@@ -146,7 +137,7 @@ exports.Status = Package.extend({
             type: 'status',
             user: this.user.get('username'),
             status: this.status,
-            message: this._sanitize(this.message)
+            message: this._sanitize(this.message || '')
         });
     }
 });

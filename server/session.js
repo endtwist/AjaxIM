@@ -10,24 +10,52 @@ var User = Base.extend({
         this.listeners = [];
         this.message_queue = [];
         this.convos = {};
-        
-        Session.IM.authentication.friends(data.username, (function(friends) {
-            this.friends = friends;
-        }).bind(this));
-        
         this._data = data;
 
         this.events = new events.EventEmitter();
-        this.events.addListener('status', function(value) {
+        this.events.addListener('status', (function(value) {
             chat.AjaxIM.events.emit('update', new chat.Status(this, value));
-        });
-        
+        }).bind(this));
+
+        chat.AjaxIM.users.push(this);
+
+        this.status = chat.STATUSES[0];
+
+        Session.IM.authentication.friends(data.username, (function(friends) {
+            friends.push(data.username);
+            this.friends = friends;
+
+            var f_s = friends.slice();
+
+            chat.AjaxIM.users.filter(function(friend) {
+                return ~~friends.indexOf(friend.get('username'));
+            }).each(function(friend) {
+                var username = friend.get('username');
+                sys.puts(friend.get('status'));
+                f_s[f_s.indexOf(username)] = [username, friend.get('status')];
+            }, this);
+
+            this.notify(JSON.stringify({type: 'hello', friends: f_s}));
+        }).bind(this));
+
         chat.AjaxIM.events.addListener('update', (function(package) {
             if(this.friends.indexOf(package.user))
                 this.notify(package);
         }).bind(this));
-                
-        chat.AjaxIM.users.push(this);
+
+        setInterval(this._expireConns.bind(this), 500);
+    },
+
+    _expireConns: function() {
+        var conn;
+        for(var i = 0; i < this.listeners.length; i++) {
+            conn = this.listeners[i].connection;
+            if((Date.now() - conn._idleStart) >= conn._idleTimeout - 2000) {
+                this.listeners[i].respond(200, JSON.encode({type: 'noop'}));
+                this.listeners.splice(i, 1);
+                i--;
+            }
+        }
     },
 
     connected: function(conn) {
@@ -60,9 +88,10 @@ var User = Base.extend({
             this.connection.respond(code, message, 'UTF-8');
         } else {
             if(!this.listeners.length)
-                this.message_queue.push(arguments);
+                return this.message_queue.push(arguments);
 
             var notify_run, cx = this.listeners.slice();
+            this.listeners = [];
             (notify_run = function(conn) {
                 return function() {
                     if(!conn) {
@@ -76,27 +105,27 @@ var User = Base.extend({
             })(cx.shift())();
         }
     },
-    
+
     signoff: function(callback) {
         chat.AjaxIM.events.emit('update', new chat.Offline(this));
-        
-        if(callback) callback()
+
+        if(callback) callback();
     },
-    
+
     get: function(key, def) {
         if(key == 'id') return this.id;
-        if(key in this._data)
+        else if(key in this._data)
             return this._data[key];
         else
-            return def || false;
+            return this['_' + key] || def || false;
     },
-    
+
     get status() {
-        return this.status;
+        return this._status;
     },
-    
+
     set status(value) {
-        this.status = value;
+        this._status = value;
         this.events.emit('status', value);
     }
 });
@@ -112,7 +141,7 @@ Store.Memory.IM = Store.Memory.extend({
     fetch: function(req, callback) {
         var sid = req.cookie(this.auth.cookie),
             self = this;
-        
+
         if(sid && this.store[sid]) {
             callback(null, this.store[sid]);
         } else {
@@ -122,14 +151,16 @@ Store.Memory.IM = Store.Memory.extend({
             });
         }
     },
-    
+
     reap: function(ms) {
         var threshold = +new Date(Date.now() - ms),
             sids = Object.keys(this.store);
         for(var i = 0, len = sids.length; i < len; ++i) {
-            this.store[sids[i]].signoff((function() {
-                this.destroy(sids[i]);
-            }).bind(this));
+            if(this.store[sids[i]].lastAccess < threshold) {
+                this.store[sids[i]].signoff((function() {
+                    this.destroy(sids[i]);
+                }).bind(this));
+            }
         }
     },
 
@@ -158,7 +189,7 @@ Session.IM = Plugin.extend({
                 self.store.reap(self.lifetime || (1).day);
             }, this.reapInterval || this.reapEvery || (1).hour, this);
         },
-        
+
         get: function(session_id) {
             return this.store.store[session_id] || false;
         }
@@ -176,21 +207,23 @@ Session.IM = Plugin.extend({
                 event.request.session.touch();
 
                 if(event.request.url.pathname == '/listen') {
+                    event.request.connection.setTimeout((5).minutes);
                     session.listener(event.request);
+
                     Session.IM.store.commit(event.request.session);
-                    
+
                     if(msg = session.message_queue.shift())
-                        session._send(msg);
+                        session._send.apply(session, msg);
                 } else {
                     session.connection = event.request;
                 }
-                
+
                 callback();
             });
 
             return true;
         },
-        
+
         response: function(event, callback) {
             if(event.request.session)
                 return Session.IM.store.commit(

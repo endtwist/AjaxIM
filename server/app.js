@@ -52,17 +52,11 @@ configure(function() {
     set('root', __dirname);
 });
 
-get('/test_cookie', function() {
-    var utils = require('express/utils');
-    this.cookie('sessionid', utils.uid());
-    this.respond(200, 'cookie set');
-});
-
 get('/listen', function() {
     // Do nothing.
 });
 
-get('/message/user/:username', function(username) {
+get('/message/:username', function(username) {
     chat.AjaxIM.messageUser(this.session, username,
                             new chat.Message(
                                 this.session,
@@ -70,18 +64,20 @@ get('/message/user/:username', function(username) {
                             ));
 });
 
-post('/message/user/:username', function(username) {
-    chat.AjaxIM.messageUser(this.session, username,
+post('/message', function() {
+    // if(!('username' in this.params.post))...
+    chat.AjaxIM.messageUser(this.session, this.params.post['username'],
                             new chat.Message(
                                 this.session,
                                 this.params.post['body'] || ''
                             ));
 });
 
-post('/message/user/:username/typing', function(username) {
+post('/message/typing', function(username) {
     if('state' in this.params.post &&
+       'username' in this.params.post &&
        -~chat.TYPING_STATES.indexOf('typing' + this.params.post.state)) {
-        chat.AjaxIM.messageUser(this.session, username,
+        chat.AjaxIM.messageUser(this.session, this.params.post['username'],
                                 new chat.Status(
                                     this.session,
                                     'typing' + this.params.post.state
