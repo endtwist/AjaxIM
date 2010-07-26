@@ -1,9 +1,9 @@
 exports.cookie = 'ajaxim_session';
 
-exports.authenticate = function(request, callback) {
+exports.authenticate = function(session_id, callback) {
     // Verify user based on request.
     // On failure, redirect user to auth form
-    
+
     callback({
         username: 'username',
         displayname: 'John Smith',
@@ -11,9 +11,9 @@ exports.authenticate = function(request, callback) {
     });
 };
 
-exports.friends = function(user, callback) {
+exports.friends = function(session_id, data, callback) {
     // Create a friends list based on given user data
-    
+
     callback([
         'username1',
         'username2',

@@ -158,15 +158,14 @@ ul#imjs-bar {
     display: block;
     position: fixed;
     bottom: 0;
-    left: 50%;
-    width: 95%;
+    right: 5%;
     background: #f0efed url(images/w.png) top left repeat-x;
     height: 25px;
     border: solid #cfceca;
-    border-width: 1px 1px 0 1px;
+    border-width: 1px 1px 0 0;
     list-style-type: none;
     padding: 0;
-    margin: 0 0 0 -47.5%;
+    margin: 0;
     font: 12px/25px Helvetica Neue, Helvetica, Arial, Calibri, Tahoma, Verdana, sans-serif;
     color: #222;
 }
@@ -174,7 +173,7 @@ ul#imjs-bar {
     /* [begin] Generic bar item */
     ul#imjs-bar > li {
         position: relative;
-        float: right;
+        float: left;
         width: 161px;
         border-left: 1px solid #cecece;
         padding: 0 10px;
@@ -273,12 +272,14 @@ ul#imjs-bar {
             padding: 1px 6px 0 4px;
             background-image: url(images/sl.png);
             background-position: 5px center;
+            float: left;
         }
         
         ul#imjs-bar li#imjs-scroll-right {
             padding: 1px 5px 0;
             background-image: url(images/sr.png);
             background-position: 20px center;
+            float: right;
         }
     /* [end] Bar scrolling buttons */
     
@@ -326,6 +327,10 @@ ul#imjs-bar {
     /* [end] Tooltip */
     
     /* [begin] Friends list button */    
+    ul#imjs-bar > li#imjs-friends {
+        float: right;
+    }
+    
     ul#imjs-bar > li#imjs-friends.imjs-not-connected, 
     ul#imjs-bar > li#imjs-friends.not-connected:hover {
         width: 10px;

@@ -25,7 +25,6 @@
 // and connecting with the server. It does //not// handle registration or
 // account management.
 
-var AjaxIM;
 (function($) {
     // Cookies API
     var cookies = {
@@ -75,7 +74,7 @@ var AjaxIM;
             self.cookies.set(name, '', -1);
         }
     };
-    
+
     // Storage API
     var store = (function(){
     	var api = {},
@@ -84,12 +83,12 @@ var AjaxIM;
     		localStorageName = 'localStorage',
     		globalStorageName = 'globalStorage',
     		storage
-    
+
     	api.set = function(key, value) {}
     	api.get = function(key) {}
     	api.remove = function(key) {}
     	api.clear = function() {}
-    
+
     	function serialize(value) {
     		return JSON.stringify(value)
     	}
@@ -97,21 +96,21 @@ var AjaxIM;
     		if (typeof value != 'string') { return undefined }
     		return JSON.parse(value)
     	}
-    
+
     	if (localStorageName in win && win[localStorageName]) {
     		storage = win[localStorageName]
     		api.set = function(key, val) { storage[key] = serialize(val) }
     		api.get = function(key) { return deserialize(storage[key]) }
     		api.remove = function(key) { delete storage[key] }
     		api.clear = function() { storage.clear() }
-    
+
     	} else if (globalStorageName in win && win[globalStorageName]) {
     		storage = win[globalStorageName][win.location.hostname]
     		api.set = function(key, val) { storage[key] = serialize(val) }
     		api.get = function(key) { return deserialize(storage[key] && storage[key].value) }
     		api.remove = function(key) { delete storage[key] }
     		api.clear = function() { for (var key in storage ) { delete storage[key] } }
-    
+
     	} else if (doc.documentElement.addBehavior) {
     		function getStorage() {
     			if (storage) { return storage; }
@@ -147,7 +146,7 @@ var AjaxIM;
     			storage.save(localStorageName)
     		}
     	}
-    
+
     	return api
     })();
 
@@ -288,34 +287,44 @@ var AjaxIM;
 
             // Setup and hide the scrollers
             $('.imjs-scroll').css('display', 'none');
-            $('#imjs-scroll-left').live('click', function() {
-                var hiddenTab = $('#imjs-bar li.imjs-tab:visible').slice(-1)
-                    .next('#imjs-bar li.imjs-tab:hidden')
+            $('#imjs-scroll-right').live('click', function() {
+                var hiddenTab = $(this)
+                    .prevAll('#imjs-bar li.imjs-tab:hidden')
                     .filter(function() {
-                        return $(this).data('state') != 'closed'
+                        return (
+                            $(this).data('state') != 'closed' &&
+                            $(this).prev('#imjs-bar li.imjs-tab:visible').length
+                        );
                     })
-                    .not('.imjs-default').slice(-1).css('display', '');
+                    .not('.imjs-default')
+                    .slice(-1)
+                    .css('display', '');
 
                 if(hiddenTab.length) {
                     $('#imjs-bar li.imjs-tab:visible').eq(0).css('display', 'none');
                     $(this).html(parseInt($(this).html()) - 1);
-                    $('#imjs-scroll-right').html(parseInt($('#imjs-scroll-right').html()) + 1);
+                    $('#imjs-scroll-left').html(parseInt($('#imjs-scroll-left').html()) + 1);
                 }
 
                 return false;
             });
-            $('#imjs-scroll-right').live('click', function() {
-                var hiddenTab = $('#imjs-bar li.imjs-tab:visible').eq(0)
-                    .prev('#imjs-bar li.imjs-tab:hidden')
+            $('#imjs-scroll-left').live('click', function() {
+                var hiddenTab = $(this)
+                    .nextAll('#imjs-bar li.imjs-tab:hidden')
                     .filter(function() {
-                        return $(this).data('state') != 'closed'
+                        return (
+                            $(this).data('state') != 'closed' &&
+                            $(this).next('#imjs-bar li.imjs-tab:visible').length
+                        );
                     })
-                    .not('.imjs-default').slice(-1).css('display', '');
-
+                    .not('.imjs-default')
+                    .slice(-1)
+                    .css('display', '');
+                console.log(hiddenTab)
                 if(hiddenTab.length) {
                     $('#imjs-bar li.imjs-tab:visible').slice(-1).css('display', 'none');
                     $(this).html(parseInt($(this).html()) - 1);
-                    $('#imjs-scroll-left').html(parseInt($('#imjs-scroll-left').html()) + 1);
+                    $('#imjs-scroll-right').html(parseInt($('#imjs-scroll-right').html()) + 1);
                 }
 
                 return false;
@@ -483,7 +492,7 @@ var AjaxIM;
                         self.addFriend(friend[0], friend[1], 'Friends');
                     });
                 break;
-                
+
                 case 'message':
                     self.incoming(message.user, message.body);
                 break;
@@ -614,12 +623,12 @@ var AjaxIM;
         // format of {{{#imjs-[md5 of username]}}}.
         _createChatbox: function(username, no_stamp) {
             var chatbox_id = 'imjs-' + $.md5(username);
-            if(!(chatbox = $('#' + chatbox_id)).size()) {
+            if(!(chatbox = $('#' + chatbox_id)).length) {
                 // add a tab
                 var tab = this.bar.addTab(username, '#' + chatbox_id);
                 var chatbox = tab.find('.imjs-chatbox');
-                chatbox.attr('id', chatbox_id);
 
+                chatbox.attr('id', chatbox_id);
                 chatbox.data('tab', tab);
 
                 // remove default items from the message log
@@ -639,24 +648,20 @@ var AjaxIM;
                 this.chats[username] = chatbox;
                 chatbox.data('username', username);
 
-                // did this chatbox fall down?
-                this.bar._scrollers();
-
                 if(username in this.friends) {
                     status = this.friends[username].status;
                     tab.addClass('imjs-' + status);
                 }
 
-                // store inputbox height
-                //var input = chatbox.find('.imjs-input');
-                //input.data('height', input.height());
+                setTimeout(this.bar._scrollers, 0);
             } else if(chatbox.data('tab').data('state') == 'closed') {
                 chatbox.find('.imjs-msglog > *').addClass('imjs-msg-old');
 
                 var tab = chatbox.data('tab');
                 if(tab.css('display') == 'none')
                     tab.css('display', '').removeClass('imjs-selected')
-                        .appendTo('#imjs-bar');
+                        .insertAfter('#imjs-scroll-left')
+                        .data('state', 'minimized');
 
                 if(!no_stamp) {
                     // possibly add a date stamp
@@ -669,6 +674,8 @@ var AjaxIM;
                 } else {
                     this.bar.notification(tab);
                 }
+
+                setTimeout(this.bar._scrollers, 0);
             }
 
             return chatbox;
@@ -705,7 +712,7 @@ var AjaxIM;
 
                 chatbox.data('lastDateStamp', formatted_date);
                 date_stamp.appendTo(message_log);
-                
+
                 return jQuery('<div>').append(date_stamp.clone()).html();
             } else {
                 //$('<div></div>').appendTo(message_log);
@@ -743,7 +750,7 @@ var AjaxIM;
             error_item.appendTo(message_log);
 
             message_log[0].scrollTop = message_log[0].scrollHeight;
-            
+
             return jQuery('<div>').append(error_item.clone()).html();
         },
 
@@ -934,7 +941,7 @@ var AjaxIM;
 
             AjaxIM.post(
                 this.actions.send,
-                {'username': username, 'body': body},
+                {to: username, body: body},
                 function(result) {
                     if(result.type == 'success' && result.success == 'sent') {
                         $(self).trigger('sendMessageSuccessful',
@@ -984,7 +991,7 @@ var AjaxIM;
 
             AjaxIM.post(
                 this.actions.status,
-                {'status': this.statuses[s], 'message': message},
+                {status: this.statuses[s], message: message},
                 function(result) {
                     switch(result.r) {
                         case 'ok':
@@ -1192,7 +1199,7 @@ var AjaxIM;
             // //Note:// New tabs are given an automatically generated ID
             // in the format of {{{#imjs-tab-[md5 of label]}}}.
             addTab: function(label, action, closable) {
-                var tab = $('.imjs-tab.imjs-default').clone().insertAfter('#imjs-scroll-right');
+                var tab = $('.imjs-tab.imjs-default').clone().insertAfter('#imjs-scroll-left');
                 tab.removeClass('imjs-default')
                     .attr('id', 'imjs-tab-' + $.md5(label))
                     .html(tab.html().replace('{label}', label))
@@ -1240,20 +1247,20 @@ var AjaxIM;
             // Document me!
             _scrollers: function() {
                 var needScrollers = false;
-                $('.imjs-tab').filter(function() {
-                    return $(this).data('state') != 'closed'
-                }).css('display', '');
+                $('#imjs-scroll-left').nextAll('.imjs-tab')
+                .filter(function() {
+                    return $(this).data('state') != 'closed';
+                })
+                .each(function(i, tab) {
+                    tab = $(tab).css('display', '');
 
-                $.each(self.chats, function(username, chatbox) {
-                    var tab = chatbox.data('tab');
-                    if(tab.data('state') == 'closed') return true;
-
-                    if(tab.position().top > $('#imjs-bar').height()) {
+                    var tab_pos = tab.position();
+                    if(tab_pos.top >= $('#imjs-bar').height() ||
+                       tab_pos.left < 0 ||
+                       tab_pos.right > $(document).width()) {
                         $('.imjs-scroll').css('display', '');
                         tab.css('display', 'none');
                         needScrollers = true;
-                    } else {
-                        tab.css('display', '');
                     }
                 });
 
@@ -1262,18 +1269,25 @@ var AjaxIM;
                 }
 
                 if($('#imjs-scroll-left').css('display') != 'none' &&
-                    $('#imjs-scroll-left').position().top > $('#imjs-bar').height()) {
+                    $('#imjs-scroll-right').position().top >= $('#imjs-bar').height()) {
                     $('#imjs-bar li.imjs-tab:visible').slice(-1).css('display', 'none');
                 }
 
-                var hiddenLeft = $('#imjs-bar li.imjs-tab:visible').slice(-1)
+                while($('.imjs-selected').css('display') == 'none')
+                    $('#imjs-scroll-right').click();
+
+                self.bar._scrollerIndex();
+            },
+
+            _scrollerIndex: function() {
+                var hiddenRight = $('#imjs-bar li.imjs-tab:visible').slice(-1)
                     .nextAll('#imjs-bar li.imjs-tab:hidden')
                     .not('.imjs-default')
                     .filter(function() {
                         return $(this).data('state') != 'closed'
                     }).length;
 
-                var hiddenRight = $('#imjs-bar li.imjs-tab:visible').eq(0)
+                var hiddenLeft = $('#imjs-bar li.imjs-tab:visible').eq(0)
                     .prevAll('#imjs-bar li.imjs-tab:hidden')
                     .not('.imjs-default')
                     .filter(function() {
@@ -1288,7 +1302,7 @@ var AjaxIM;
 
     self.bar.initialize();
     self.bar._scrollers();
-    
+
     self.listen();
     };
 
@@ -1340,7 +1354,7 @@ var AjaxIM;
 
     AjaxIM.get = function(url, data, successFunc, failureFunc) {
         AjaxIM.request(url, 'GET', data, successFunc, failureFunc);
-    };    
+    };
 
     AjaxIM.request = function(url, type, data, successFunc, failureFunc) {
         if(typeof failureFunc != 'function');
@@ -1537,7 +1551,7 @@ var AjaxIM;
         if(str in AjaxIM.l10n) return AjaxIM.l10n[str];
         return str;
     };
-    
+
     AjaxIM.l10n = {
         dayNames: [
             "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat",
