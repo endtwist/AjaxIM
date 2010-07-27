@@ -48,7 +48,7 @@ app.post('/message', function(req, res) {
 });
 
 app.post('/message/typing', function(req, res) {
-    if(-~packages.TYPING_STATES.indexOf('typing' + req.body['state'])) {
+    if(~packages.TYPING_STATES.indexOf('typing' + req.body['state'])) {
         res.find(req.body['to'], function(user) {
             if(user) {
                 res.message(user, new packages.Status(

@@ -1,31 +1,4 @@
-// = im.js =
-//
-// **Copyright &copy; 2005 &ndash; 2010 Joshua Gross**\\
-// //MIT Licensed//
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-//
-// This is the main library for Ajax IM. It encompasses the UI controls,
-// and connecting with the server. It does //not// handle registration or
-// account management.
-
-(function($) {
+//(function($) {
     // Cookies API
     var cookies = {
         // === {{{AjaxIM.}}}**{{{cookies.set(name, value, days)}}}** ===
@@ -369,7 +342,7 @@
                 });
 
                 this.chatstore = chatstore;
-                storage.set(self.username + '-chats', chatstore);
+                store.set(self.username + '-chats', chatstore);
             } else {
                 this.chatstore = chatstore;
             }
@@ -1170,10 +1143,8 @@
                 var tab = $(this).parents('.imjs-tab');
                 tab.css('display', 'none').data('state', 'closed');
 
-                if(self.settings.storageMethod && self.storageReady) {
-                    delete self.chatstore[tab.find('.imjs-chatbox').data('username')];
-                    store.set(self.username + '-chats', self.chatstore);
-                }
+                delete self.chatstore[tab.find('.imjs-chatbox').data('username')];
+                store.set(self.username + '-chats', self.chatstore);
 
                 $(self).trigger('tabToggled', ['closed', tab]);
 
@@ -1580,4 +1551,4 @@
         registerUsernameTaken: 'The chosen username is already in use; please choose another.',
         registerUnknown: 'An unknown error occurred. Please try again.'
     }
-})(jQuery || $, false);
+//})(jQuery || $, false);

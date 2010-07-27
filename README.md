@@ -46,6 +46,138 @@ Starting the server in _development_ mode is as simple as:
 To start the server in _production_ mode:
     EXPRESS_ENV=production node server/app.js
 
+## Contributing
+
+Pull requests are being accepted! If you would like to contribute, simply fork
+the project and make your changes.
+
+### Style Guide
+
+If you intend on contributing, please follow this style guide when submitting
+patches or commits. Submissions that do not follow these guidelines will not
+be accepted.
+
+* Use 4 space indents (not tabs!)
+* No trailing whitespace
+* Blank line at the end of files
+* Semi-colons at the ends of lines, where appropriate
+* Keep lines to 80 characters or less
+* Never bump the version
+
+No whitespace between keys and values:
+    {foo: 'bar'}
+    // good
+    
+    {foo : 'bar'}
+    // bad
+
+Hash formatting:
+    {foo: 'bar', baz: 'taz'}
+    // good
+    
+    {
+        foo: 'bar',
+        baz: 'taz',
+        moo: 'cow'
+    }
+    // good
+    
+    { foo: 'bar', baz: 'taz' }
+    // bad
+    
+    {foo: 'bar',
+     baz: 'taz',
+     moo: 'cow'}
+    // bad
+
+Chained methods:
+    str
+        .strip
+        .replace(...)
+        .replace(...)
+    // good
+    
+    str
+    .strip
+    .replace(...)
+    .replace(...)
+    // bad
+    
+    str.
+        strip.
+        replace(...).
+        replace(...)
+    // bad
+
+Single quotes over double quotes, unless double quotes make sense:
+    'hello'
+    // good
+    
+    "what's up?"
+    // good
+    
+    "hello"
+    // bad
+
+Ternary expressions are fine, but cannot be nested and must be formatted as:
+    foo = (a ? b : c);
+    // good
+    
+    foo = (something.hasAPropertyLikeThis == 'some other value'
+               ? 'result one'
+               : 'result two'
+          );
+    // good
+    
+    foo = something.hasAPropertyLikeThis === 'some other value' ?
+              'result one' :
+              'result two'
+    // bad
+
+Use braces for conditionals, unless conditionals are single statements:
+    if(foo) {
+        bar();
+        baz();
+    }
+    // good
+    
+    if(foo) bar();
+    else baz();
+    // good
+    
+    if(foo)
+        bar(),
+        baz()
+    // bad
+
+Closures:
+    function() {
+    }
+    // good
+    
+    function () {
+    }
+    // bad
+    
+    function()
+    {
+    }
+    // bad
+
+Methods:
+    foo.bar = function() {
+    }
+    // good
+    
+    foo.bar = function (){
+    }
+    // bad
+    
+    foo.bar = function()
+    {
+    }
+    // bad
+
 ## License
 
 (The MIT License)
