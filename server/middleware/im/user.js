@@ -22,7 +22,11 @@ User.prototype.receivedUpdate = function(package) {
 
 User.prototype._friends = function(friends) {
     this.friends = friends;
-    this.send(JSON.stringify({type: 'hello', friends: friends}));
+    this.send(JSON.stringify({
+        type: 'hello',
+        username: this.data('username'),
+        friends: friends
+    }));
 };
 
 User.prototype._expireConns = function() {
