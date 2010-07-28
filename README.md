@@ -30,6 +30,12 @@ Install `Connect`:
 Install `Express.js`:
     npm install express
 
+Compile the daemon add-on if you plan on letting the server daemonize itself:
+    cd server/libs/daemon
+    node-waf configure build
+    cp build/default/daemon.node .
+    rm -rf build
+
 ## Installation for Development
 
 If you will want to test Ajax IM standalone for development, you will want to
@@ -45,6 +51,9 @@ Starting the server in _development_ mode is as simple as:
 
 To start the server in _production_ mode:
     EXPRESS_ENV=production node server/app.js
+
+To start the server as a _daemon_ in _production_ mode:
+    node server/app.js start production
 
 ## Contributing
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 var sys = require('sys'),
     connect = require('connect'),
     express = require('express'),
@@ -6,6 +7,51 @@ Object.merge(global, require('ext'));
 
 Object.merge(global, require('./settings'));
 try { Object.merge(global, require('./settings.local')); } catch(e) {}
+
+try {
+    var daemon = require('./libs/daemon/daemon'),
+        start = function() {
+            daemon.init({
+                lock: PID_FILE,
+                stdin: '/dev/null',
+                stdout: LOG_FILE,
+                stderr: LOG_FILE,
+                umask: 0,
+                chroot: null,
+                chdir: '.'
+            });
+        },
+        stop = function() {
+            process.kill(parseInt(require('fs').readFileSync(PID_FILE)));
+        };
+
+    switch(process.argv[2]) {
+        case 'stop':
+            stop();
+            process.exit(0);
+        break;
+
+        case 'start':
+            if(process.argv[3])
+                process.env.EXPRESS_ENV = process.argv[3];
+            start();
+        break;
+
+        case 'restart':
+            stop();
+            start();
+            process.exit(0);
+        break;
+
+        case 'help':
+            sys.puts('Usage: node app.js [start|stop|restart]');
+            process.exit(0);
+        break;
+    }
+} catch(e) {
+    sys.puts('Daemon library not found! Please compile ' +
+             './libs/daemon/daemon.node if you would like to use it.');
+}
 
 var app = express.createServer(
     connect.methodOverride(),

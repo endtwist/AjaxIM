@@ -15,4 +15,10 @@ APP_PORT = 8000;
 // This is the library (from libs/authenticate/) that we will use to
 // authenticate a user signing in. The value should be the name of the file
 // without the '.js' part. 'index' is the default library.
-AUTH_LIBRARY = 'index';
+AUTH_LIBRARY = 'default';
+
+// === Daemon ===
+//
+// Define where the PID and log files will be deposited when run as a daemon.
+PID_FILE = '/tmp/ajaxim.pid';
+LOG_FILE = '/var/run/ajaxim.log';
