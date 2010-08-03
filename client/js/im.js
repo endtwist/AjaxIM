@@ -129,8 +129,10 @@ AjaxIM = function(options, actions) {
         $('.imjs-friend').live('click', function() {
             var chatbox = self._createChatbox($(this).data('friend'));
 
-            if(chatbox.data('tab').data('state') != 'active')
+            if(chatbox.data('tab').data('state') != 'active') {
                 chatbox.data('tab').click();
+                store.set(self.username + '-activeTab', $(this).data('friend'));
+            }
 
             chatbox.find('.imjs-input').focus();
         });
@@ -170,7 +172,7 @@ AjaxIM = function(options, actions) {
                 .not('.imjs-default')
                 .slice(-1)
                 .css('display', '');
-            console.log(hiddenTab)
+
             if(hiddenTab.length) {
                 $('#imjs-bar li.imjs-tab:visible').slice(-1).css('display', 'none');
                 $(this).html(parseInt($(this).html()) - 1);
@@ -202,6 +204,11 @@ $.extend(AjaxIM.prototype, {
         this.initTabBar();
         this._scrollers();
 
+        this.username = store.get('user');
+
+        if(this.username)
+            this.storage();
+
         this.listen();
     },
 
@@ -213,49 +220,29 @@ $.extend(AjaxIM.prototype, {
     // This function is called //automatically//, upon initialization of the IM engine.
     storage: function() {
         var self = this,
-            chatstore = store.get(this.username + '-chats');
+            chatstore = store.get(this.username + '-chats'),
+            friends = store.get(this.username + '-friends');
 
-        if(this.chatstore) {
-            $.each(this.chatstore, function(username, convo) {
-                if(username in chatstore)
-                    chatstore[username] = $.merge(chatstore[username], self.chatstore[username]);
-                else
-                    chatstore[username] = self.chatstore[username];
+        this.chatstore = chatstore || {};
+        this.friends = {};
+
+        if(friends) {
+            $.each(friends, function(friend, data) {
+                self.addFriend(friend, data.status, data.group);
             });
 
-            this.chatstore = chatstore;
-            store.set(this.username + '-chats', chatstore);
-        } else {
-            this.chatstore = chatstore;
+            $('#imjs-friends').removeClass('imjs-not-connected');
         }
 
         $.each(this.chatstore, function(username, convo) {
             if(!convo.length) return;
 
-            var chatbox = self._createChatbox(username, true);
+            var chatbox = self._createChatbox(username, true),
+                msglog = chatbox.find('.imjs-msglog').empty();
             chatbox.data('lastDateStamp', null).css('display', 'none');
 
-            // Remove the automatic date stamp
-            chatbox.find('.imjs-msglog').empty();
-
             // Restore all messages, date stamps, and errors
-            $.each(convo, function() {
-                switch(this[0]) {
-                    case 'error':
-                        self._addError(chatbox, decodeURIComponent(this[2]), this[3]);
-                    break;
-
-                    case 'datestamp':
-                        self._addDateStamp(chatbox, this[3]);
-                    break;
-
-                    case 'a':
-                    case 'b':
-                        self._addMessage(this[0], chatbox, this[1],
-                            decodeURIComponent(this[2]), this[3]);
-                    break;
-                }
-            });
+            msglog.html(convo.join(''));
 
             $(self).trigger('chatRestored', [username, chatbox]);
         });
@@ -268,43 +255,20 @@ $.extend(AjaxIM.prototype, {
         }
     },
 
-    // === //private// {{{AjaxIM.}}}**{{{_session(friends)}}}** ===
-    //
-    // Restores session data (username, friends) and begins listening the server.
-    // Called only by {{{AjaxIM.resume()}}}.
-    //
-    // ==== Parameters ====
-    // * {{{friends}}} is a list of "friend" objects, e.g.:\\
-    // {{{[{u: 'friend', s: 1, g: 'group'}, ...]}}}
-    // ** {{{u}}} being the friend's username.
-    // ** {{{s}}} being one of the available status codes (see {{{AjaxIM.statuses}}}), depending on the friend's current status.
-    // ** {{{g}}} being the group that the friend is in.
-    _session: function(friends) {
-        var self = this;
-
-        $('#imjs-friends-panel .imjs-header span').html(this.username);
-        $('#imjs-friends').removeClass('imjs-not-connected');
-
-        $.each(friends, function(friend, info) {
-            self.addFriend(friend, info.status, info.group);
-        });
-        this._storeFriends();
-
-        $(this).trigger('sessionResumed', [this.username]);
-
-        setTimeout(function() { self.listen(); }, 0);
-    },
-
     // === //private// {{{AjaxIM.}}}**{{{_clearSession()}}}** ===
     //
     // Clears all session data from the last known user.
     _clearSession: function() {
-        var last_user = store.get('user').name;
-        if(last_user != this.username)
-            store.clear();
+        var last_user = store.get('user');
+        $.each(['friends', 'activeTab', 'chats'], function(i, key) {
+            store.remove(last_user + '-' + key);
+        });
+        store.set('user', '');
 
         this.chats = {};
+        this.friends = {};
         $('.imjs-tab').not('.imjs-tab.imjs-default').remove();
+        $('.imjs-friend-group').not('.imjs-friend-group.imjs-default').remove();
 
         delete this.username;
     },
@@ -339,7 +303,10 @@ $.extend(AjaxIM.prototype, {
 
         switch(message.type) {
             case 'hello':
+                this._clearSession();
+                
                 this.username = message.username;
+                store.set('user', message.username);
                 $('#imjs-friends').removeClass('imjs-not-connected');
                 $.each(message.friends, function() {
                     var friend;
@@ -349,6 +316,7 @@ $.extend(AjaxIM.prototype, {
                         friend = [this.toString(), 'offline'];
                     self.addFriend(friend[0], friend[1], 'Friends');
                 });
+                store.set(this.username + '-friends', this.friends);
             break;
 
             case 'message':
@@ -392,8 +360,8 @@ $.extend(AjaxIM.prototype, {
             this.notification(chatbox.data('tab'));
         }
 
-        var msg_html = this._addMessage('b', chatbox, from, message);
-        this._store(from, msg_html);
+        var msg = this._addMessage('b', chatbox, from, message);
+        this._store(from, msg);
     },
 
     // === {{{AjaxIM.}}}**{{{addFriend(username, group)}}}** ===
@@ -499,8 +467,8 @@ $.extend(AjaxIM.prototype, {
 
             if(!no_stamp) {
                 // add a date stamp
-                var ds_html = this._addDateStamp(chatbox);
-                this._store(username, ds_html);
+                var ds = this._addDateStamp(chatbox);
+                this._store(username, ds);
             }
 
             // associate the username with the object and vice-versa
@@ -524,8 +492,8 @@ $.extend(AjaxIM.prototype, {
 
             if(!no_stamp) {
                 // possibly add a date stamp
-                var ds_html = this._addDateStamp(chatbox);
-                this._store(username, ds_html);
+                var ds = this._addDateStamp(chatbox);
+                this._store(username, ds);
             }
 
             if(!$('#imjs-bar .imjs-selected').length) {
@@ -572,10 +540,13 @@ $.extend(AjaxIM.prototype, {
             chatbox.data('lastDateStamp', formatted_date);
             date_stamp.appendTo(message_log);
 
-            return jQuery('<div>').append(date_stamp.clone()).html();
+            return {
+                replace_last: false,
+                html: jQuery('<div>').append(date_stamp.clone()).html()
+            };
         } else {
             //$('<div></div>').appendTo(message_log);
-            return '';
+            return {replace_last: false, html: ''};
         }
     },
 
@@ -610,7 +581,10 @@ $.extend(AjaxIM.prototype, {
 
         message_log[0].scrollTop = message_log[0].scrollHeight;
 
-        return jQuery('<div>').append(error_item.clone()).html();
+        return {
+            replace_last: false,
+            html: jQuery('<div>').append(error_item.clone()).html()
+        };
     },
 
     // === //private// {{{AjaxIM.}}}**{{{_addMessage(ab, chatbox, username, message, time)}}}** //
@@ -638,9 +612,9 @@ $.extend(AjaxIM.prototype, {
         var last_message = chatbox.find('.imjs-msglog > *:last-child');
         if(last_message.hasClass('imjs-msg-' + ab)) {
             // Last message was from the same person, so let's just add another imjs-msg-*-msg
-            var message_container = (last_message.hasClass('imjs-msg-' + ab + '-container') ?
-                last_message :
-                last_message.find('.imjs-msg-' + ab + '-container'));
+            var message_container = (last_message.hasClass('imjs-msg-' + ab + '-container')
+                ? last_message
+                : last_message.find('.imjs-msg-' + ab + '-container'));
 
             var single_message =
                 $('.imjs-tab.imjs-default .imjs-chatbox .imjs-msglog .imjs-msg-' + ab + '-msg')
@@ -682,11 +656,19 @@ $.extend(AjaxIM.prototype, {
         var msglog = chatbox.find('.imjs-msglog');
         msglog[0].scrollTop = msglog[0].scrollHeight;
 
-        return jQuery('<div>').append(single_message.clone()).html();
+        return {
+            replace_last : !!message_container,
+            html: jQuery('<div>').append(
+                      message_container
+                      ? last_message.clone()
+                      : message_group.clone()
+                  ).html()
+        };
     },
 
-    _store: function(username, html) {
-        if(!html.length) return;
+    _store: function(username, msg) {
+        console.log(msg);
+        if(!msg.html.length) return;
         if(!this.chatstore) this.chatstore = {};
 
         if(!(username in this.chatstore)) {
@@ -696,7 +678,10 @@ $.extend(AjaxIM.prototype, {
             this.chatstore[username].shift();
         }
 
-        this.chatstore[username].push(html);
+        if(msg.replace_last)
+            this.chatstore[username].pop();
+
+        this.chatstore[username].push(msg.html);
 
         store.set(this.username + '-chats', this.chatstore);
     },
@@ -790,11 +775,11 @@ $.extend(AjaxIM.prototype, {
 
         if(this.chats[username]) { // REMOVE ME?
             // possibly add a datestamp
-            var ds_html = this._addDateStamp(this.chats[username]);
-            this._store(username, ds_html);
+            var ds = this._addDateStamp(this.chats[username]);
+            this._store(username, ds);
 
-            var msg_html = this._addMessage('a', this.chats[username], this.username, body);
-            this._store(username, msg_html);
+            var msg = this._addMessage('a', this.chats[username], this.username, body);
+            this._store(username, msg);
         }
 
         $(this).trigger('sendingMessage', [username, body]);
@@ -817,12 +802,12 @@ $.extend(AjaxIM.prototype, {
             },
             function(error) {
                 self._notConnected();
-                var error_html = self._addError(
-                               self.chats[username],
-                               'You are currently not connected or the ' +
-                               'server is not available. Please ensure ' +
-                               'that you are signed in and try again.');
-                self._store(error_html);
+                var error = self._addError(
+                              self.chats[username],
+                              'You are currently not connected or the ' +
+                              'server is not available. Please ensure ' +
+                              'that you are signed in and try again.');
+                self._store(error);
 
                 $(self).trigger('sendMessageFailed',
                                 ['not connected', username, body]);
@@ -966,12 +951,13 @@ $.extend(AjaxIM.prototype, {
             if(tab.attr('id') != 'imjs-friends') {
                 $('#imjs-bar > li')
                     .not(tab)
-                    .not('#imjs-friends')
+                    .not('#imjs-friends, .imjs-scroll, .imjs-default')
                     .removeClass('imjs-selected')
                     .each(function() {
-                        if(tab.data('state') != 'closed') {
-                            tab.data('state', 'minimized');
-                            var chatbox = tab.find('.imjs-chatbox');
+                        var self = $(this);
+                        if(self.data('state') != 'closed') {
+                            self.data('state', 'minimized');
+                            var chatbox = self.find('.imjs-chatbox');
                             if(chatbox.length)
                                 chatbox.css('display', 'none');
                         }

@@ -1,11 +1,11 @@
-exports.cookie = 'ajaxim_session';
+exports.cookie = 'sessionid';
 
 exports.authenticate = function(session_id, callback) {
     // Verify user based on request.
     // On failure, redirect user to auth form
 
     callback({
-        username: 'username',
+        username: 'username' + Math.floor(Math.random() * 1000),
         displayname: 'John Smith',
         otherinfo: 'any other relevant key/values'
     });

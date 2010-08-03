@@ -2,3 +2,4 @@ local/*
 *.local.*
 *.local/
 server/libs/daemon/daemon.node
+server/libs/daemon/.lock-wscript

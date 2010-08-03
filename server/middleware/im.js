@@ -14,6 +14,11 @@ module.exports = function setupHub(options) {
             next(new Error('session requires cookieDecoder to work properly'));
             return;
         }
+        
+        if(req.dev) {
+            next();
+            return;
+        }
 
         if(req.sessionID) {
             store.get(req.sessionID, function(err, sess) {

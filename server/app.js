@@ -70,6 +70,14 @@ app.configure('development', function() {
     app.set('view engine', 'jade');
     app.set('views', __dirname + '/dev/views');
 
+    app.stack.unshift({
+        route: '/dev',
+        handle: function(req, res, next) {
+            req.dev = true;
+            next();
+        }
+    });
+
     app.use(connect.logger());
     app.use('/dev', connect.router(require('./dev/app')));
     app.use(connect.staticProvider(__dirname + '/dev/public'));
