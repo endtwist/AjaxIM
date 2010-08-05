@@ -80,20 +80,8 @@ AjaxIM = function(options, actions) {
         });
 
         $('.imjs-chatbox .imjs-minimize').live('click', function() {
-            $(this).parents('.imjs-chatbox').data('tab').click();
+            $(this).parents('.imjs-tab').click();
         });
-
-        // Allow a chatbox to be closed
-        /*
-        $('.imjs-chatbox .imjs-close').live('click', function() {
-            var chatbox = $(this).parents('.imjs-chatbox');
-            chatbox.data('tab')
-                .data('state', 'closed').css('display', 'none');
-
-            delete self.chatstore[chatbox.data('username')];
-            store.set(self.username + '-chats', self.chatstore);
-        });
-        */
 
         // Setup message sending for all chatboxes
         $('.imjs-chatbox .imjs-input').live('keydown', function(event) {
@@ -129,12 +117,16 @@ AjaxIM = function(options, actions) {
         $('.imjs-friend').live('click', function() {
             var chatbox = self._createChatbox($(this).data('friend'));
 
-            if(chatbox.data('tab').data('state') != 'active') {
-                chatbox.data('tab').click();
+            if(chatbox.parents('.imjs-tab').data('state') != 'active') {
+                chatbox.parents('.imjs-tab').click();
                 store.set(self.username + '-activeTab', $(this).data('friend'));
             }
 
             chatbox.find('.imjs-input').focus();
+            if(!(input = chatbox.find('.imjs-input')).data('height')) {
+                // store the height for resizing later
+                input.data('height', input.height());
+            }
         });
 
         // Setup and hide the scrollers
@@ -249,7 +241,7 @@ $.extend(AjaxIM.prototype, {
 
         var activeTab = store.get(this.username + '-activeTab');
         if(activeTab && activeTab in this.chats) {
-            this.chats[activeTab].data('tab').click();
+            this.chats[activeTab].parents('.imjs-tab').click();
             var msglog = this.chats[activeTab].find('.imjs-msglog');
             msglog[0].scrollTop = msglog[0].scrollHeight;
         }
@@ -352,16 +344,16 @@ $.extend(AjaxIM.prototype, {
         // check if IM exists, otherwise create new window
         // TODO: If friend is not on the buddylist,
         // should add them to a temp list?
-        var chatbox = this._createChatbox(from);
+        var chatbox = this._createChatbox(from),
+            tab = chatbox.parents('.imjs-tab');
 
         if(!$('#imjs-bar .imjs-selected').length) {
-            chatbox.data('tab').click();
-        } else if(chatbox.data('tab').data('state') != 'active') {
-            this.notification(chatbox.data('tab'));
+            tab.click();
+        } else if(tab.data('state') != 'active') {
+            this.notification(tab);
         }
 
-        var msg = this._addMessage('b', chatbox, from, message);
-        this._store(from, msg);
+        this._store(from, this._addMessage('b', chatbox, from, message));
     },
 
     // === {{{AjaxIM.}}}**{{{addFriend(username, group)}}}** ===
@@ -456,7 +448,6 @@ $.extend(AjaxIM.prototype, {
             var chatbox = tab.find('.imjs-chatbox');
 
             chatbox.attr('id', chatbox_id);
-            chatbox.data('tab', tab);
 
             // remove default items from the message log
             var message_log = chatbox.find('.imjs-msglog').empty();
@@ -467,8 +458,7 @@ $.extend(AjaxIM.prototype, {
 
             if(!no_stamp) {
                 // add a date stamp
-                var ds = this._addDateStamp(chatbox);
-                this._store(username, ds);
+                this._store(username, this._addDateStamp(chatbox));
             }
 
             // associate the username with the object and vice-versa
@@ -481,10 +471,10 @@ $.extend(AjaxIM.prototype, {
             }
 
             setTimeout(function() { self._scrollers(); }, 0);
-        } else if(chatbox.data('tab').data('state') == 'closed') {
+        } else if(chatbox.parents('.imjs-tab').data('state') == 'closed') {
             chatbox.find('.imjs-msglog > *').addClass('imjs-msg-old');
 
-            var tab = chatbox.data('tab');
+            var tab = chatbox.parents('.imjs-tab');
             if(tab.css('display') == 'none')
                 tab.css('display', '').removeClass('imjs-selected')
                     .insertAfter('#imjs-scroll-left')
@@ -492,8 +482,7 @@ $.extend(AjaxIM.prototype, {
 
             if(!no_stamp) {
                 // possibly add a date stamp
-                var ds = this._addDateStamp(chatbox);
-                this._store(username, ds);
+                this._store(username, this._addDateStamp(chatbox));
             }
 
             if(!$('#imjs-bar .imjs-selected').length) {
@@ -701,7 +690,7 @@ $.extend(AjaxIM.prototype, {
     // in another way (such as via the friends list [**not yet implemented**]).
     _friendUpdate: function(friend, status, statusMessage) {
         if(this.chats[friend]) {
-            var tab = this.chats[friend].data('tab');
+            var tab = this.chats[friend].parents('.imjs-tab');
             var tab_class = 'imjs-tab';
             if(tab.data('state') == 'active') tab_class += ' imjs-selected';
             tab_class += ' imjs-' + status;
@@ -773,13 +762,12 @@ $.extend(AjaxIM.prototype, {
         if(!body) return;
         var self = this;
 
-        if(this.chats[username]) { // REMOVE ME?
+        if(this.chats[username]) {
             // possibly add a datestamp
-            var ds = this._addDateStamp(this.chats[username]);
-            this._store(username, ds);
-
-            var msg = this._addMessage('a', this.chats[username], this.username, body);
-            this._store(username, msg);
+            this._store(username, this._addDateStamp(this.chats[username]));
+            this._store(username,
+                        this._addMessage('a', this.chats[username],
+                                         this.username, body));
         }
 
         $(this).trigger('sendingMessage', [username, body]);
@@ -932,9 +920,7 @@ $.extend(AjaxIM.prototype, {
                     $('.imjs-tooltip').css('display', '');
                 }
             });
-        $('#imjs-friends-panel')
-            .data('tab', $('#imjs-friends'))
-            .css('display', 'none');
+        $('#imjs-friends-panel').css('display', 'none');
     },
 
     // === {{{AjaxIM.}}}**{{{activateTab()}}}** ===
@@ -991,6 +977,12 @@ $.extend(AjaxIM.prototype, {
 
         if(chatbox) {
             if(!(input = chatbox.find('.imjs-input')).data('height')) {
+                if(!($.browser.msie && $.browser.opera)) input.height(0);
+                if(input[0].scrollHeight > input.height() ||
+                   input[0].scrollHeight < input.height()) {
+                    input.height(input[0].scrollHeight);
+                }
+
                 // store the height for resizing later
                 input.data('height', input.height());
             }
@@ -1059,9 +1051,7 @@ $.extend(AjaxIM.prototype, {
         if(closable === false)
             tab.find('.imjs-close').eq(0).remove();
 
-        if(typeof action == 'string') {
-            //tab.data('chatbox', action);
-        } else {
+        if(typeof action != 'string') {
             tab.find('.imjs-chatbox').remove();
             tab.click(action);
         }
