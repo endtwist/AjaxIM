@@ -3,3 +3,5 @@ local/*
 *.local/
 server/libs/daemon/daemon.node
 server/libs/daemon/.lock-wscript
+client/js/im.compiled.js
+client/js/im.min.js

@@ -375,7 +375,7 @@ $.extend(AjaxIM.prototype, {
     // * {{{status}}} is the current status of the friend.
     // * {{{group}}} is the user group to which the friend should be added.
     addFriend: function(username, status, group) {
-        var group_id = 'imjs-group-' + $.md5(group);
+        var group_id = 'imjs-group-' + md5.hex(group);
 
         if(!(group_item = $('#' + group_id)).length) {
             var group_item = $('.imjs-friend-group.imjs-default').clone()
@@ -388,7 +388,7 @@ $.extend(AjaxIM.prototype, {
             group_header.html(group_header.html().replace('{group}', group));
         }
 
-        var user_id = 'imjs-friend-' + $.md5(username + group);
+        var user_id = 'imjs-friend-' + md5.hex(username + group);
 
         if(!$('#' + user_id).length) {
             var user_item = group_item.find('ul li.imjs-default').clone()
@@ -449,7 +449,7 @@ $.extend(AjaxIM.prototype, {
     // format of {{{#imjs-[md5 of username]}}}.
     _createChatbox: function(username, no_stamp) {
         var self = this,
-            chatbox_id = 'imjs-' + $.md5(username);
+            chatbox_id = 'imjs-' + md5.hex(username);
         if(!(chatbox = $('#' + chatbox_id)).length) {
             // add a tab
             var tab = this.addTab(username, '#' + chatbox_id);
@@ -727,7 +727,7 @@ $.extend(AjaxIM.prototype, {
         }
 
         if(this.friends[friend]) {
-            var friend_id = 'imjs-friend-' + $.md5(friend + this.friends[friend].group);
+            var friend_id = 'imjs-friend-' + md5.hex(friend + this.friends[friend].group);
             $('#' + friend_id).attr('class', 'imjs-friend imjs-' + status);
 
             if(status == 0) {
@@ -1046,7 +1046,7 @@ $.extend(AjaxIM.prototype, {
     addTab: function(label, action, closable) {
         var tab = $('.imjs-tab.imjs-default').clone().insertAfter('#imjs-scroll-left');
         tab.removeClass('imjs-default')
-            .attr('id', 'imjs-tab-' + $.md5(label))
+            .attr('id', 'imjs-tab-' + md5.hex(label))
             .html(tab.html().replace('{label}', label))
             .data('state', 'minimized');
 
@@ -1274,5 +1274,5 @@ AjaxIM.l10n = {
 
     notConnected: 'You are currently not connected or the server is not available. ' +
                   'Please ensure that you are signed in and try again.',
-    notConnectedTip: 'You are currently not connected.',
+    notConnectedTip: 'You are currently not connected.'
 };
