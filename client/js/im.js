@@ -201,6 +201,7 @@ $.extend(AjaxIM.prototype, {
         if(this.username)
             this.storage();
 
+        this._lastReconnect = 0;
         this.listen();
     },
 
@@ -259,6 +260,7 @@ $.extend(AjaxIM.prototype, {
 
         this.chats = {};
         this.friends = {};
+        this.chatstore = {};
         $('.imjs-tab').not('.imjs-tab.imjs-default').remove();
         $('.imjs-friend-group').not('.imjs-friend-group.imjs-default').remove();
 
@@ -282,7 +284,13 @@ $.extend(AjaxIM.prototype, {
             function(error) {
                 self._notConnected();
                 $(self).trigger('pollFailed', ['not connected']);
-                // try reconnecting?
+
+                // Try reconnecting in n*2 seconds (max 16)
+                self._reconnectIn = (self._lastReconnect < (new Date()) - 60000)
+                                     ? 1000
+                                     : Math.min(self._reconnectIn * 2, 16000);
+                self._lastReconnect = new Date();
+                setTimeout(function() { self.listen(); }, self._reconnectIn);
             }
         );
     },
@@ -296,7 +304,7 @@ $.extend(AjaxIM.prototype, {
         switch(message.type) {
             case 'hello':
                 this._clearSession();
-                
+
                 this.username = message.username;
                 store.set('user', message.username);
                 $('#imjs-friends').removeClass('imjs-not-connected');
@@ -656,7 +664,6 @@ $.extend(AjaxIM.prototype, {
     },
 
     _store: function(username, msg) {
-        console.log(msg);
         if(!msg.html.length) return;
         if(!this.chatstore) this.chatstore = {};
 
@@ -780,7 +787,7 @@ $.extend(AjaxIM.prototype, {
                     $(self).trigger('sendMessageSuccessful',
                                     [username, body]);
                 } else if(result.type == 'error') {
-                    if(result.error == 'user offline')
+                    if(result.error == 'not online')
                         $(self).trigger('sendMessageFailed',
                                         ['offline', username, body]);
                     else
@@ -931,7 +938,8 @@ $.extend(AjaxIM.prototype, {
     //
     // //Note:// {{{this}}}, here, refers to the tab DOM element.
     activateTab: function(tab) {
-        var chatbox = tab.find('.imjs-chatbox') || false;
+        var chatbox = tab.find('.imjs-chatbox') || false,
+            input;
 
         if(tab.data('state') != 'active') {
             if(tab.attr('id') != 'imjs-friends') {
@@ -976,7 +984,8 @@ $.extend(AjaxIM.prototype, {
         }
 
         if(chatbox) {
-            if(!(input = chatbox.find('.imjs-input')).data('height')) {
+            if((input = chatbox.find('.imjs-input')).length &&
+                !input.data('height')) {
                 if(!($.browser.msie && $.browser.opera)) input.height(0);
                 if(input[0].scrollHeight > input.height() ||
                    input[0].scrollHeight < input.height()) {
@@ -1187,7 +1196,8 @@ AjaxIM.get = function(url, data, successFunc, failureFunc) {
 };
 
 AjaxIM.request = function(url, type, data, successFunc, failureFunc) {
-    if(typeof failureFunc != 'function');
+    var errorTypes = ['timeout', 'error', 'notmodified', 'parseerror'];
+    if(typeof failureFunc != 'function')
         failureFunc = function(){};
 
     $.ajax({
@@ -1198,12 +1208,14 @@ AjaxIM.request = function(url, type, data, successFunc, failureFunc) {
         cache: false,
         timeout: 299000,
         //callback: 'jsonp' + (new Date()).getTime(),
-        success: function(json, textStatus) {
-            console.log(json);
+        success: function(json, textStatus, xhr) {
+            if(xhr.status == '0') return;
+            _dbg(json);
             successFunc(json);
         },
-        error: function(xhr, textStatus, error) {
-            failureFunc(error);
+        complete: function(xhr, textStatus) {
+            if(~errorTypes.indexOf(textStatus) || xhr.status == '0')
+                failureFunc(textStatus);
         }
     });
 
@@ -1266,3 +1278,8 @@ AjaxIM.l10n = {
                   'Please ensure that you are signed in and try again.',
     notConnectedTip: 'You are currently not connected.'
 };
+
+AjaxIM.debug = true;
+function _dbg(msg) {
+    if(AjaxIM.debug && window.console) console.log(msg);
+}

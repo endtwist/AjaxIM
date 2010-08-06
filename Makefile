@@ -27,7 +27,7 @@ imjs: ${IMJS}
 
 ${IMJS}: ${MODULES}
 	@@echo "Building" ${IMJS}
-	@@cat ${MODULES} > ${IMJS}
+	@@cat ${MODULES} | sed 's/debug = true/debug = false/' > ${IMJS}
 
 min: ${IMJS_MIN}
 
@@ -36,6 +36,7 @@ ${IMJS_MIN}: ${IMJS}
 	
 	@@head -21 ${IMJS} > ${IMJS_MIN}
 	@@${COMPILER} --js ${IMJS} --warning_level QUIET >> ${IMJS_MIN}
+	@@rm -f ${IMJS}
 
 clean:
 	@@echo "Removing built files"

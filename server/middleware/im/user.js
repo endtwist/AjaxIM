@@ -31,14 +31,15 @@ User.prototype._friends = function(friends) {
 
 User.prototype._expireConns = function() {
     var conn,
-        noop = JSON.stringify({type: 'noop'});
+        noop = JSON.stringify({type: 'noop'}),
+        noop_headers = {
+            'Content-Type': 'application/json',
+            'Content-Length': noop.length
+        };
     for(var i = 0; i < this.listeners.length; i++) {
         conn = this.listeners[i].connection;
         if((Date.now() - conn._idleStart) >= conn._idleTimeout - 2000) {
-            this.listeners[i].writeHead(200, {
-                'Content-Type': 'application/json',
-                'Content-Length': noop.length
-            });
+            this.listeners[i].writeHead(200, noop_headers);
             this.listeners[i].end(noop);
             this.listeners.splice(i, 1);
             i--;
@@ -78,23 +79,16 @@ User.prototype._send = function(type, code, message, callback) {
         if(!this.listeners.length)
             return this.message_queue.push(arguments);
 
-        var notify_run, cx = this.listeners.slice();
+        var cx = this.listeners.slice(), conn;
         this.listeners = [];
-        (notify_run = function(conn) {
-            return function() {
-                if(!conn) {
-                    if(callback) callback();
-                    return;
-                }
-
-                conn.writeHead(code || 200, {
-                    'Content-Type': 'application/json',
-                    'Content-Length': message.length
-                });
-                conn.end(message);
-                notify_run(cx.shift());
-            };
-        })(cx.shift())();
+        while(conn = cx.shift()) {
+            conn.writeHead(code || 200, {
+                'Content-Type': 'application/json',
+                'Content-Length': message.length
+            });
+            conn.end(message);
+        }
+        if(callback) callback();
     }
 };
 
