@@ -1,14 +1,10 @@
 # Ajax IM
 
-Ajax IM ("Ajax Instant Messenger") is a browser-centric instant
-messaging framework.
-
-
 ## What is Ajax IM?
 
-It uses AJAX to create a real-time (or near real-time) IM environment that
-can be used in conjunction with existing community and commercial software,
-or simply as a stand-alone product.
+Ajax IM ("Ajax Instant Messenger") is an instant messenger for the web. It is
+intended to be integrated with existing websites to provide a more interactive
+community experience.
 
 
 ## Installation
@@ -38,8 +34,8 @@ Compile the daemon add-on if you plan on letting the server daemonize itself:
 
 ## Installation for Development
 
-If you will want to test Ajax IM standalone for development, you will want to
-install [`Jade`](http://github.com/visionmedia/jade) as well.
+If you want to test Ajax IM as a standalone app for development, you will need
+to install [`Jade`](http://github.com/visionmedia/jade) as well.
 
 To install `Jade`:
     npm install jade
@@ -54,6 +50,21 @@ To start the server in _production_ mode:
 
 To start the server as a _daemon_ in _production_ mode:
     node server/app.js start production
+
+## Testing it out
+
+Once the server is up and running in _development_ mode, you can test it out
+through the included development testing app. The below instructions are
+assuming that you have left all default configuration options. If not, please
+replace the host/port values with the correct ones.
+
+To get started, first initialize a session cookie by going to:
+    http://localhost:8000/dev/cookie
+
+Then head over to the development page that will initialize the client:
+    http://localhost:8000/dev/
+
+That's it!
 
 ## Contributing
 
