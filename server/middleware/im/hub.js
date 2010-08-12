@@ -19,10 +19,17 @@ var Hub = module.exports = function Hub(options) {
     }
 
     this.events.addListener('update', o_.bind(function(package) {
-        if(package.constructor === exports.Offline) {
-            for(var i = 0, l = this.users.length; i < l; i++) {
-                if(this.users[i].get('username') == package.user)
-                    this.users.splice(i, 1);
+        var _package = package.toJSON();
+        if(package.type == 'status' && package.status == 'offline') {
+            var sids = Object.keys(this.sessions), sid, sess;
+            for(sid in this.sessions) {
+                sess = this.sessions[sid];
+                if(sess.data('username') == package.username) {
+                    if(sess.listeners.length)
+                        sess.send(200, {type: 'goodbye'});
+                    delete this.sessions[sid];
+                    break;
+                }
             }
         }
     }, this));
@@ -38,9 +45,7 @@ Hub.prototype.reap = function(ms) {
     for(var i = 0, len = sids.length; i < len; ++i) {
         var sid = sids[i], sess = this.sessions[sid];
         if(sess.lastAccess < threshold) {
-            sess.signoff(o_.bind(function() {
-                delete this.sessions[sid];
-            }, this));
+            this.events.emit('update', new packages.Offline(sess.data('username')));
         }
     }
 };
@@ -111,7 +116,8 @@ Hub.prototype.message = function(from, to, package) {
 };
 
 Hub.prototype.signOff = function(sid) {
-    this.get(sid, function(session) {
-        if(session) this.events.emit('update', new packages.Offline(this));
-    });
+    if(sid in this.sessions)
+        this.events.emit('update',
+                         new packages.Offline(
+                            this.sessions[sid].data('username')));
 };

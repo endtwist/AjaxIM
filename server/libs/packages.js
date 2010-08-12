@@ -81,7 +81,7 @@ Offline.prototype.toJSON = function() {
     // A special type of status
     return {
         type: 'status',
-        user: this.user.get('username'),
+        user: this.username,
         status: 'offline',
         message: ''
     };

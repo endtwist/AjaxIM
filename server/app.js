@@ -127,3 +127,8 @@ app.post('/status', function(req, res) {
         res.send(new packages.Error('invalid status'));
     }
 });
+
+app.post('/signoff', function(req, res) {
+    res.signOff();
+    res.send(new packages.Success('goodbye'));
+});

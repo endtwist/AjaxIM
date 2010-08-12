@@ -17,7 +17,7 @@ var User = module.exports = function(id, data) {
 };
 
 User.prototype.receivedUpdate = function(package) {
-    if(this.friends.indexOf(package.user))
+    if(this.friends.indexOf(package.username))
         this.send(package);
 };
 
