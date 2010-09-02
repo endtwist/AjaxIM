@@ -271,28 +271,13 @@ $.extend(AjaxIM.prototype, {
     //
     // Queries the server for new messages.
     listen: function() {
-        var self = this;
-        AjaxIM.get(
-            this.actions.listen,
-            {},
-            function(response) {
-                if(response)
-                    self._parseMessage(response);
-
-                setTimeout(function() { self.listen(); }, 0);
-            },
-            function(error) {
-                self._notConnected();
-                $(self).trigger('pollFailed', ['not connected']);
-
-                // Try reconnecting in n*2 seconds (max 16)
-                self._reconnectIn = (self._lastReconnect < (new Date()) - 60000)
-                                     ? 1000
-                                     : Math.min(self._reconnectIn * 2, 16000);
-                self._lastReconnect = new Date();
-                setTimeout(function() { self.listen(); }, self._reconnectIn);
-            }
-        );
+        var self = this,
+            hp = this.actions.listen.replace('http://', '').split('/');
+        this.socket = new io.Socket(hp[0], {resource: hp[1]});
+        this.socket.connect();
+        this.socket.on('message', function(data) {
+            self._parseMessage(JSON.parse(data));
+        });
     },
 
     // === //private// {{{AjaxIM.}}}**{{{_parseMessages(messages)}}}** ===
