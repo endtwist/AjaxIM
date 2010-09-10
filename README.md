@@ -26,6 +26,9 @@ Install `Connect`:
 Install `Express.js`:
     npm install express
 
+Install `Ext.js`:
+    npm install ext
+
 Compile the daemon add-on if you plan on letting the server daemonize itself:
     cd server/libs/daemon
     node-waf configure build
