@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 var sys = require('sys'),
-    connect = require('connect'),
     express = require('express'),
     packages = require('./libs/packages');
 Object.merge(global, require('ext'));
@@ -54,9 +53,9 @@ try {
 }
 
 var app = express.createServer(
-    connect.methodOverride(),
-    connect.cookieDecoder(),
-    connect.bodyDecoder(),
+    express.methodOverride(),
+    express.cookieDecoder(),
+    express.bodyDecoder(),
     require('./middleware/im')({
         lifetime: (15).minutes,
         reapInterval: (1).minute,
@@ -78,10 +77,10 @@ app.configure('development', function() {
         }
     });
 
-    app.use(connect.logger());
-    app.use('/dev', connect.router(require('./dev/app')));
-    app.use(connect.staticProvider(__dirname + '/dev/public'));
-    app.use(connect.errorHandler({dumpExceptions: true, showStack: true}));
+    app.use(express.logger());
+    app.use('/dev', express.router(require('./dev/app')));
+    app.use(express.staticProvider(__dirname + '/dev/public'));
+    app.use(express.errorHandler({dumpExceptions: true, showStack: true}));
 });
 
 app.listen(APP_PORT, APP_HOST);

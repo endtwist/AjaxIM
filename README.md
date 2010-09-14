@@ -9,10 +9,10 @@ community experience.
 
 ## Installation
 
-Install `Node.js` (known to work with v0.1.98+):
-    wget http://nodejs.org/dist/node-v0.1.101.tar.gz
-    tar xzf node-v0.1.101.tar.gz
-    cd node-v0.1.101
+Install `Node.js` (known to work with v0.2.0+):
+    wget http://nodejs.org/dist/node-v0.2.1.tar.gz
+    tar xzf node-v0.2.1.tar.gz
+    cd node-v0.2.1
     ./configure
     make
     make install
@@ -20,14 +20,11 @@ Install `Node.js` (known to work with v0.1.98+):
 Install Node Package Manager (`npm`):
     See instructions at http://github.com/isaacs/npm.
 
-Install `Connect`:
-    npm install connect
-
-Install `Express.js`:
+Install `Express.js` and `Connect` (included automatically):
     npm install express
 
-Install `Ext.js`:
-    npm install ext
+Install `Ext.js` (fixed version for Node.js 0.2.0+ and latest `npm` until changes are merged):
+    npm install http://github.com/endtwist/ext.js/tarball/0698dfdc0ff7d79926f3215779c27774120ce7f4
 
 Compile the daemon add-on if you plan on letting the server daemonize itself:
     cd server/libs/daemon
