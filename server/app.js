@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 var sys = require('sys'),
     express = require('express'),
-    packages = require('./libs/packages');
-Object.merge(global, require('ext'));
+    packages = require('./libs/packages'),
+    o_ = require('./libs/utils');
 
-Object.merge(global, require('./settings'));
-try { Object.merge(global, require('./settings.local')); } catch(e) {}
+o_.merge(global, require('./settings'));
+try { o_.merge(global, require('./settings.local')); } catch(e) {}
 
 try {
     var daemon = require('./libs/daemon/daemon'),
@@ -57,8 +57,8 @@ var app = express.createServer(
     express.cookieDecoder(),
     express.bodyDecoder(),
     require('./middleware/im')({
-        lifetime: (15).minutes,
-        reapInterval: (1).minute,
+        lifetime: 15 * 60 * 1000,
+        reapInterval: 60 * 1000,
         authentication: require('./libs/authentication/' + AUTH_LIBRARY)
     })
 );
