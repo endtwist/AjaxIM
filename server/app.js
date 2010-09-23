@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 var sys = require('sys'),
     express = require('express'),
+    io = require('./libs/socket.io'),
     packages = require('./libs/packages');
 Object.merge(global, require('ext'));
 
@@ -84,6 +85,97 @@ app.configure('development', function() {
 });
 
 app.listen(APP_PORT, APP_HOST);
+
+var socket = io.listen(app, {
+        transportOptions: {
+            'websocket': {closeTimeout: 20000},
+            'flashsocket': {closeTimeout: 20000},
+            'htmlfile': {closeTimeout: 20000},
+            'xhr-multipart': {closeTimeout: 20000},
+            'xhr-polling': {closeTimeout: 20000},
+            'jsonp-polling': {closeTimeout: 20000}
+        }
+    }),
+    auth = require('./libs/authentication/' + AUTH_LIBRARY);
+
+socket.on('connection', function(client) {
+    client.metadata = function(key, def) {
+        return client._metadata[key] || def || false;
+    };
+
+    client.sendTo = function(username, message) {
+        try {
+            Object.values(socket.clients).filter(function(cl) {
+                return username == cl.metadata('username');
+            }).each(function(user) {
+                user.send(new packages.Message(
+                    client.metadata('username'),
+                    message
+                ));
+            });
+            return true;
+        } catch(e) {
+            return false;
+        }
+    };
+
+    client.on('connect', function() {
+        client.authenticated = false;
+        client.key_id = null;
+        client.send({type: 'auth', id: client.sessionId, key: auth.cookie});
+    });
+    
+    client.on('message', function(data) {
+        if(!data['type']) {
+            client.send(new packages.Error('bad packet'));
+            return;
+        }
+
+        console.log(data);
+
+        if(!client.authenticated) {
+            if(data.type == 'auth') {
+                auth.authenticate(data.id, function(info) {
+                    if(info) {
+                        client.authenticated = true;
+                        client.key_id = data.id;
+                        client._metadata = info;
+
+                        auth.friends(data.id, info, function(friends) {
+                            var friends_copy = friends.slice();
+                            Object.values(socket.clients).filter(function(friend) {
+                                return ~friends.indexOf(friend.metadata('username'));
+                            }).each(function(friend) {
+                                var username = friend.metadata('username');
+                                friends_copy[friends_copy.indexOf(username)] =
+                                                    [username, friend.metadata('status')];
+                            }, this);
+        
+                            client.friends = friends_copy;
+                            client.send({
+                                type: 'hello',
+                                username: client.metadata('username'),
+                                friends: friends
+                            });
+                        });
+                    } else {
+                        client.send(new packages.Error('invalid auth'));
+                    }
+                });
+            } else {
+                client.send(new packages.Error('not authenticated'));
+            }
+        } else {
+            // do shit.
+            client.send(data);
+            client.sendTo(client.metadata('username'), 'hello');
+        }
+    });
+    
+    client.on('disconnect', function() {
+    
+    });
+});
 
 // Listener endpoint; handled in middleware
 app.get('/listen', function(){});

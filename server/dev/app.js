@@ -6,6 +6,12 @@ module.exports = function(app) {
             locals: {}
         });
     });
+    
+    app.get('/socket', function(req, res) {
+        res.render('socket', {
+            locals: {}
+        });
+    });
 
     app.get('/cookie', function(req, res) {
         res.send('cookie set', {
