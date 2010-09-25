@@ -1,5 +1,6 @@
 var events = require('events'),
-    packages = require('../../libs/packages');
+    packages = require('../../libs/packages'),
+    o_ = require('../../libs/utils');
 
 var User = module.exports = function(id, data) {
     this.id = id;
@@ -12,7 +13,7 @@ var User = module.exports = function(id, data) {
     this.events = new events.EventEmitter();
     this.status = packages.STATUSES[0];
 
-    setInterval(this._expireConns.bind(this), 500);
+    setInterval(o_.bind(this._expireConns, this), 500);
 };
 
 User.prototype.receivedUpdate = function(package) {

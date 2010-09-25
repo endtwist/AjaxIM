@@ -18,14 +18,14 @@ var Hub = module.exports = function Hub(options) {
         }, this.reapInterval, this);
     }
 
-    this.events.addListener('update', (function(package) {
+    this.events.addListener('update', o_.bind(function(package) {
         if(package.constructor === exports.Offline) {
             for(var i = 0, l = this.users.length; i < l; i++) {
                 if(this.users[i].get('username') == package.user)
                     this.users.splice(i, 1);
             }
         }
-    }).bind(this));
+    }, this));
 };
 
 Hub.prototype.destroy = function(sid, fn) {
