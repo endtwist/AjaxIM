@@ -1,8 +1,15 @@
-var socket = new io.Socket();
-socket.transport.sessionid = store.get('socketid') || null;
+var socket = new io.Socket(),
+    socketid = store.get('socketid') || false;
+console.log(socketid);
+if(socketid) {
+    socket.transport = socket.getTransport([socketid.type]);
+    socket.transport.sessionid = socketid.id;
+}
 
 socket.on('connect', function() {
-    console.log('connected!');
+    console.log('connected! ' + socket.transport.sessionid);
+    store.set('socketid', {type: socket.transport.type,
+                           id: socket.transport.sessionid});
 });
 
 socket.on('message', function(data) {
@@ -17,5 +24,3 @@ socket.on('message', function(data) {
 socket.on('disconnect', function() {
     console.log('disconnected!');
 });
-
-socket.connect();
