@@ -36,7 +36,7 @@ module.exports = function setupHub(options) {
 
                 sess.touch();
                 if(url.parse(req.url).pathname === '/listen') {
-                    req.connection.setTimeout((5).minutes);
+                    req.connection.setTimeout(5 * 60 * 1000);
                     sess.listener(res);
                     store.set(req.sessionID, sess);
 

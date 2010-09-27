@@ -23,9 +23,6 @@ Install Node Package Manager (`npm`):
 Install `Express.js` and `Connect` (included automatically):
     npm install express
 
-Install `Ext.js` (fixed version for Node.js 0.2.0+ and latest `npm` until changes are merged):
-    npm install http://github.com/endtwist/ext.js/tarball/0698dfdc0ff7d79926f3215779c27774120ce7f4
-
 Compile the daemon add-on if you plan on letting the server daemonize itself:
     cd server/libs/daemon
     node-waf configure build
