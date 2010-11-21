@@ -21,7 +21,7 @@ module.exports = function setupHub(options) {
         }
 
         if(req.sessionID) {
-            store.get(req.sessionID, function(err, sess) {
+            store.get(req, function(err, sess) {
                 if(err) {
                     next(err);
                     return;

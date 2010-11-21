@@ -50,16 +50,16 @@ Hub.prototype.reap = function(ms) {
     }
 };
 
-Hub.prototype.get = function(sid, fn) {
-    if(this.sessions[sid]) {
-        fn(null, this.sessions[sid]);
+Hub.prototype.get = function(req, fn) {
+    if(this.sessions[req.sessionID]) {
+        fn(null, this.sessions[req.sessionID]);
     } else {
-        this.auth.authenticate(sid, o_.bind(function(data) {
+        this.auth.authenticate(req, o_.bind(function(data) {
             if(data) {
-                var session = new User(sid, data);
-                this.set(sid, session);
+                var session = new User(req.sessionID, data);
+                this.set(req.sessionID, session);
 
-                this.auth.friends(sid, data, o_.bind(function(friends) {
+                this.auth.friends(req, data, o_.bind(function(friends) {
                     var friends_copy = friends.slice();
                     o_.values(this.sessions).filter(function(friend) {
                         return ~friends.indexOf(friend.data('username'));
@@ -78,7 +78,7 @@ Hub.prototype.get = function(sid, fn) {
                     }, this));
                     this.events.addListener('update',
                                       o_.bind(session.receivedUpdate, session));
-                    this.set(sid, session);
+                    this.set(req.sessionID, session);
                     fn(null, session);
                 }, this));
             } else {
