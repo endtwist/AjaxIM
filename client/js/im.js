@@ -175,6 +175,7 @@ AjaxIM = function(options, actions) {
             return false;
         });
 
+        // Setup status buttons
         $('#imjs-status-panel .imjs-button').live('click', function() {
             var status = this.id.split('-')[2];
 
@@ -186,26 +187,29 @@ AjaxIM = function(options, actions) {
             $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
             $(this).addClass('imjs-toggled');
             
-            $('#imjs-away-message-text').val('');
+            $('#imjs-away-message-text').val(status == 'away'
+                                                ? AjaxIM.l10n.defaultAway
+                                                : '');
 
-            self.status(status, '');
+            self.status(status, $('#imjs-away-message-text').val());
             return false;
         });
         
-        // Allow status messages to be changed
-        $('#imjs-away-message-text').live('keyup', (function() {
-            var msg_type_timer = null;
-            
-            return function() {
-                if(msg_type_timer) clearTimeout(msg_type_timer);
-
-                msg_type_timer = setTimeout(function() {
-                    self.current_status[1] = $('#imjs-away-message-text')
-                                                .addClass('imjs-loading').val();
-                    self.status.apply(self, self.current_status);
-                }, 250);
-            };
-        })());
+        // Allow status message to be changed
+        $('#imjs-away-message-text')
+            .live('keyup', (function() {
+                var msg_type_timer = null;
+                
+                return function() {
+                    if(msg_type_timer) clearTimeout(msg_type_timer);
+    
+                    msg_type_timer = setTimeout(function() {
+                        self.current_status[1] = $('#imjs-away-message-text')
+                                                    .addClass('imjs-loading').val();
+                        self.status.apply(self, self.current_status);
+                    }, 250);
+                };
+            })());
         $(this).bind('changeStatusSuccessful changeStatusFailed', function() {
             $('#imjs-away-message-text').removeClass('imjs-loading');
         });
@@ -233,6 +237,7 @@ AjaxIM = function(options, actions) {
         // Initialize the chatbox hash
         this.chats = {};
 
+        // On window resize, check scroller visibility
         $(window).resize(function() {
             try {
                 self._scrollers();
@@ -505,9 +510,7 @@ $.extend(AjaxIM.prototype, {
         }
 
         this.friends[username] = {status: status, group: group};
-
         this._updateFriendCount();
-
         return this.friends[username];
     },
 
@@ -517,10 +520,9 @@ $.extend(AjaxIM.prototype, {
     // in the friend tab.
     _updateFriendCount: function() {
         var friendsLength = 0;
-        for(var f in this.friends) {
-            if(this.friends[f].status[0] != 0)
-                friendsLength++;
-        }
+        $.each(this.friends, function(u, f) {
+            if(f.status[0] != 'offline') friendsLength++;
+        });
         $('#imjs-friends .imjs-tab-text span span').html(friendsLength);
     },
 
@@ -1052,8 +1054,10 @@ $.extend(AjaxIM.prototype, {
             })
             .mouseenter(function() {
                 if($(this).hasClass('imjs-not-connected')) {
-                    $('.imjs-tooltip').css('display', 'block');
-                    $('.imjs-tooltip p').html(AjaxIM.l10n.notConnectedTip);
+                    $('.imjs-tooltip')
+                        .css('display', 'block')
+                        .find('p')
+                        .html(AjaxIM.l10n.notConnectedTip);
 
                     var tip_left = $(this).offset().left -
                         $('.imjs-tooltip').outerWidth() +
@@ -1428,7 +1432,9 @@ AjaxIM.l10n = {
 
     notConnected: 'You are currently not connected or the server is not available. ' +
                   'Please ensure that you are signed in and try again.',
-    notConnectedTip: 'You are currently not connected.'
+    notConnectedTip: 'You are currently not connected.',
+    
+    defaultAway: 'I\'m away.'
 };
 
 AjaxIM.debug = true;

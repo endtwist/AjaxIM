@@ -57,7 +57,7 @@ var app = express.createServer(
     express.cookieDecoder(),
     express.bodyDecoder(),
     require('./middleware/im')({
-        lifetime: 15 * 60 * 1000,
+        maxAge: 15 * 60 * 1000,
         reapInterval: 60 * 1000,
         authentication: require('./libs/authentication/' + AUTH_LIBRARY)
     })
@@ -79,7 +79,8 @@ app.configure('development', function() {
 
     app.use(express.logger());
     app.use('/dev', express.router(require('./dev/app')));
-    app.use(express.staticProvider(__dirname + '/dev/public'));
+    app.use(express.staticProvider(
+                require('path').join(__dirname, '../client')));
     app.use(express.errorHandler({dumpExceptions: true, showStack: true}));
 });
 
