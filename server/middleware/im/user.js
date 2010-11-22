@@ -11,7 +11,7 @@ var User = module.exports = function(id, data) {
     this._data = data;
 
     this.events = new events.EventEmitter();
-    this.status = packages.STATUSES[0];
+    this.status(packages.STATUSES[0], '');
 
     setInterval(o_.bind(this._expireConns, this), 500);
 };
@@ -104,12 +104,11 @@ User.prototype.touch = function() {
     this.lastAccess = +new Date;
 };
 
-Object.defineProperty(User.prototype, 'status', {
-    get: function() {
+User.prototype.status = function(value, message) {
+    if(!value)
         return this._status;
-    },
-    set: function(value) {
-        this._status = value;
-        this.events.emit('status', value);
-    }
-});
+    
+    this._status = value;
+    this._status_message = message;
+    this.events.emit('status', value, message);
+};

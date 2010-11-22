@@ -66,16 +66,19 @@ Hub.prototype.get = function(req, fn) {
                     }).forEach(function(friend) {
                         var username = friend.data('username');
                         friends_copy[friends_copy.indexOf(username)] =
-                                            [username, friend.data('status')];
+                                            [username, friend.status()];
                     }, this);
 
                     session._friends(friends_copy);
-                    session.events.addListener('status', o_.bind(function(value) {
-                        this.events.emit(
-                            'update',
-                            new packages.Status(session.data('username'), value)
-                        );
-                    }, this));
+                    session.events.addListener('status',
+                        o_.bind(function(value, message) {
+                            this.events.emit(
+                                'update',
+                                new packages.Status(session.data('username'),
+                                                    value,
+                                                    message)
+                            );
+                        }, this));
                     this.events.addListener('update',
                                       o_.bind(session.receivedUpdate, session));
                     this.set(req.sessionID, session);

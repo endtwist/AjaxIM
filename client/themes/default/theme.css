@@ -517,6 +517,10 @@ ul#imjs-friends-list {
                 color: #fff;
             }
             
+                li.imjs-friend-group ul li:hover span.imjs-friend-status {
+                    color: #5184e0;
+                }
+            
             li.imjs-friend-group ul li > strong {
                 position: relative;
                 color: #00cc00;
@@ -540,6 +544,12 @@ ul#imjs-friends-list {
                 font-weight: 700;
                 text-shadow: 0 1px 0 #333;
             }
+
+span.imjs-friend-status {
+    color: #888;
+    white-space: nowrap;
+    padding: 0 0 0 5px;
+}
 
 div#imjs-friends-panel form, div#imjs-friends-panel form p {
     margin: 0;

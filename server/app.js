@@ -122,7 +122,7 @@ app.post('/message/typing', function(req, res) {
 
 app.post('/status', function(req, res) {
     if(~packages.STATUSES.indexOf(req.body['status'])) {
-        res.status(req.body.status);
+        res.status(req.body.status, req.body.message);
         res.send(new packages.Success('status updated'));
     } else {
         res.send(new packages.Error('invalid status'));

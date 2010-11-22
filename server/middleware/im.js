@@ -51,8 +51,8 @@ module.exports = function setupHub(options) {
                 res.message = function(to, package) {
                     store.message(req.session, to, package);
                 };
-                res.status = function(status) {
-                    req.session.status = status;
+                res.status = function(value, message) {
+                    req.session.status(value, message);
                 };
                 res.signOff = function() { store.signOff(req.sessionID); };
 

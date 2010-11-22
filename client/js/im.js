@@ -187,8 +187,12 @@ AjaxIM = function(options, actions) {
             $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
             $(this).addClass('imjs-toggled');
             
+            if(self.current_status[0] == 'away')
+                self._last_status_message = $('#imjs-away-message-text').val();
+
             $('#imjs-away-message-text').val(status == 'away'
-                                                ? AjaxIM.l10n.defaultAway
+                                                ? self._last_status_message ||
+                                                  AjaxIM.l10n.defaultAway
                                                 : '');
 
             self.status(status, $('#imjs-away-message-text').val());
@@ -204,6 +208,7 @@ AjaxIM = function(options, actions) {
                     if(msg_type_timer) clearTimeout(msg_type_timer);
     
                     msg_type_timer = setTimeout(function() {
+                        self._last_status_message = 
                         self.current_status[1] = $('#imjs-away-message-text')
                                                     .addClass('imjs-loading').val();
                         self.status.apply(self, self.current_status);
@@ -221,10 +226,6 @@ AjaxIM = function(options, actions) {
             $('#imjs-reconnect').hide();
             $('.imjs-input').attr('disabled', false);
             
-            // Reconnect
-            self.storage();
-            self.listen();
-            
             // Restore status to available
             $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
             $('#imjs-button-available').addClass('imjs-toggled');
@@ -232,6 +233,17 @@ AjaxIM = function(options, actions) {
                 $('#imjs-friends').removeClass('imjs-' + this);
             });
             $('#imjs-friends').addClass('imjs-available');
+            $('#imjs-away-message-text, #imjs-away-message-text-arrow')
+                .css('display', 'none');
+            
+            // Set status
+            self.current_status = ['available', ''];
+            store.set(self.username + '-status', ['available', '']);
+            self.status('available', '');
+            
+            // Reconnect
+            self.storage();
+            self.listen();
         });
 
         // Initialize the chatbox hash
@@ -339,10 +351,10 @@ $.extend(AjaxIM.prototype, {
     // Clears all session data from the last known user.
     _clearSession: function() {
         var last_user = store.get('user');
-        $.each(['friends', 'activeTab', 'chats', 'status',
-                'connected'], function(i, key) {
-            store.remove(last_user + '-' + key);
-        });
+        $.each(['friends', 'activeTab', 'chats', 'status', 'connected'],
+               function(i, key) {
+                   store.remove(last_user + '-' + key);
+               });
         store.set('user', '');
 
         this.chats = {};
@@ -506,7 +518,13 @@ $.extend(AjaxIM.prototype, {
                     .appendTo(group_item.find('ul'));
             if(status[0] == 'offline')
                 user_item.hide();
-            user_item.html(user_item.html().replace('{username}', username));
+            user_item.html(
+                user_item.html()
+                         .replace('{username}', username)
+                         .replace('{status}', status[1])
+            );
+            user_item.find('.imjs-friend-status')
+                     .attr('title', status[1]);
         }
 
         this.friends[username] = {status: status, group: group};
@@ -819,7 +837,7 @@ $.extend(AjaxIM.prototype, {
 
             var date_stamp_date = date_stamp.find('.imjs-date-date').html(
                 AjaxIM.l10n[
-                    'chat' + status[0].toUpperCase() + status.slice(1)
+                    'chat' + status.toUpperCase() + status.slice(1)
                 ].replace(/%s/g, friend));
 
             var msglog = this.chats[friend].find('.imjs-msglog');
@@ -830,8 +848,11 @@ $.extend(AjaxIM.prototype, {
         if(this.friends[friend]) {
             var friend_id = 'imjs-friend-' + md5.hex(friend + this.friends[friend].group);
             $('#' + friend_id).attr('class', 'imjs-friend imjs-' + status);
+            $('#' + friend_id).find('.imjs-friend-status')
+                              .html(statusMessage)
+                              .attr('status', statusMessage);
 
-            if(status == 0) {
+            if(status == 'offline') {
                 $('#' + friend_id + ':visible').slideUp();
                 $('#' + friend_id + ':hidden').hide();
             } else if(!$('#' + friend_id + ':visible').length) {
@@ -933,22 +954,22 @@ $.extend(AjaxIM.prototype, {
     // ==== Parameters ====
     // * {{{s}}} is the status code, as defined by {{{AjaxIM.statuses}}}.
     // * {{{message}}} is the custom status message.
-    status: function(s, message) {
+    status: function(value, message) {
         var self = this;
 
         // update status icon(s)
-        if(!~this.statuses.indexOf(s))
+        if(!~this.statuses.indexOf(value))
             return;
 
         // check if selected before writing over the class!
         $(this.statuses).each(function() {
             $('#imjs-friends').removeClass('imjs-' + this);
         });
-        $('#imjs-friends').addClass('imjs-' + s);
+        $('#imjs-friends').addClass('imjs-' + value);
 
-        $(this).trigger('changingStatus', [s, message]);
+        $(this).trigger('changingStatus', [value, message]);
 
-        if(s == 'offline') {
+        if(value == 'offline') {
             self._notConnected();
             self._showReconnect();
             store.set(this.username + '-offline', true);
@@ -960,35 +981,38 @@ $.extend(AjaxIM.prototype, {
                 {},
                 function(result) {
                     if(result.type == 'success')
-                        $(self).trigger('changeStatusSuccessful', [s, null]);
+                        $(self).trigger('changeStatusSuccessful',
+                                        [value, null]);
                 },
                 function(error) {
-                    $(self).trigger('changeStatusFailed', ['not connected', s, null]);
+                    $(self).trigger('changeStatusFailed',
+                                    ['not connected', value, null]);
                 }
             );
         } else {
-            if(!this.offline)
-                this.listen();
-        
             AjaxIM.post(
                 this.actions.status,
-                {status: s, message: message},
+                {status: value, message: message},
                 function(result) {
                     switch(result.type) {
                         case 'success':
-                            $(self).trigger('changeStatusSuccessful', [s, message]);
-                            self.current_status = [s, message];
-                            store.set(self.username + '-status', self.current_status);
+                            $(self).trigger('changeStatusSuccessful',
+                                            [value, message]);
+                            self.current_status = [value, message];
+                            store.set(self.username + '-status',
+                                      self.current_status);
                         break;
     
                         case 'error':
                         default:
-                            $(self).trigger('changeStatusFailed', [result.e, s, message]);
+                            $(self).trigger('changeStatusFailed',
+                                            [result.e, value, message]);
                         break;
                     }
                 },
                 function(error) {
-                    $(self).trigger('changeStatusFailed', ['not connected', s, message]);
+                    $(self).trigger('changeStatusFailed',
+                                    ['not connected', value, message]);
                 }
             );
         }
