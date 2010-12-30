@@ -77,6 +77,7 @@ That's it!
 
 * Follow [endtwist](http://twitter.com/endtwist) on twitter for updates
 * [Google Group](http://groups.google.com/group/ajaxim) for discussion
+* [GitHub Wiki](https://github.com/endtwist/AjaxIM/wiki) for guidance
 
 ## Node Compatibility
 
