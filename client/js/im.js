@@ -837,7 +837,7 @@ $.extend(AjaxIM.prototype, {
 
             var date_stamp_date = date_stamp.find('.imjs-date-date').html(
                 AjaxIM.l10n[
-                    'chat' + status.toUpperCase() + status.slice(1)
+                    'chat' + status[0].toUpperCase() + status.slice(1)
                 ].replace(/%s/g, friend));
 
             var msglog = this.chats[friend].find('.imjs-msglog');
