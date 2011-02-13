@@ -1476,7 +1476,7 @@ AjaxIM.l10n = {
     defaultAway: 'I\'m away.'
 };
 
-//AjaxIM.debug = true;
+AjaxIM.debug = true;
 function _dbg(msg) {
     if(AjaxIM.debug && window.console) console.log(msg);
 }
