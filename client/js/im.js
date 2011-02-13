@@ -17,7 +17,9 @@ AjaxIM = function(options, actions) {
         // {{{theme.css}}}.
         var defaults = {
             pollServer: '',
-            theme: 'themes/default'
+            theme: 'themes/default',
+            hideOffline: true,
+            debug: false
         };
 
         // === {{{AjaxIM.}}}**{{{settings}}}** ===
@@ -26,6 +28,8 @@ AjaxIM = function(options, actions) {
         // the defaults (see above) will be used. //These options will be defined
         // upon calling the initialization function, and not set directly.//
         this.settings = $.extend(defaults, options);
+
+        AjaxIM.debug = this.settings.debug
 
         // === {{{AjaxIM.}}}**{{{actions}}}** ===
         //
@@ -118,7 +122,7 @@ AjaxIM = function(options, actions) {
         $('.imjs-friend').live('click', function() {
             var chatbox = self._createChatbox($(this).data('friend'));
 
-            if(chatbox.parents('.imjs-tab').data('state') != 'active') {
+            if(chatbox.parents('.imjs-tab').show().data('state') != 'active') {
                 chatbox.parents('.imjs-tab').click();
                 store.set(self.username + '-activeTab', $(this).data('friend'));
             }
@@ -183,10 +187,10 @@ AjaxIM = function(options, actions) {
                 opacity: (status == 'away' ? 'show' : 'hide'),
                 height: (status == 'away' ? 'show' : 'hide')
             }, 50);
-            
+
             $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
             $(this).addClass('imjs-toggled');
-            
+
             if(self.current_status[0] == 'away')
                 self._last_status_message = $('#imjs-away-message-text').val();
 
@@ -198,17 +202,17 @@ AjaxIM = function(options, actions) {
             self.status(status, $('#imjs-away-message-text').val());
             return false;
         });
-        
+
         // Allow status message to be changed
         $('#imjs-away-message-text')
             .live('keyup', (function() {
                 var msg_type_timer = null;
-                
+
                 return function() {
                     if(msg_type_timer) clearTimeout(msg_type_timer);
-    
+
                     msg_type_timer = setTimeout(function() {
-                        self._last_status_message = 
+                        self._last_status_message =
                         self.current_status[1] = $('#imjs-away-message-text')
                                                     .addClass('imjs-loading').val();
                         self.status.apply(self, self.current_status);
@@ -218,14 +222,14 @@ AjaxIM = function(options, actions) {
         $(this).bind('changeStatusSuccessful changeStatusFailed', function() {
             $('#imjs-away-message-text').removeClass('imjs-loading');
         });
-        
+
         // Setup reconnect button
         $('#imjs-reconnect').live('click', function() {
             self.offline = false;
             store.remove(self.username + '-offline');
             $('#imjs-reconnect').hide();
             $('.imjs-input').attr('disabled', false);
-            
+
             // Restore status to available
             $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
             $('#imjs-button-available').addClass('imjs-toggled');
@@ -235,12 +239,12 @@ AjaxIM = function(options, actions) {
             $('#imjs-friends').addClass('imjs-available');
             $('#imjs-away-message-text, #imjs-away-message-text-arrow')
                 .css('display', 'none');
-            
+
             // Set status
             self.current_status = ['available', ''];
             store.set(self.username + '-status', ['available', '']);
             self.status('available', '');
-            
+
             // Reconnect
             self.storage();
             self.listen();
@@ -273,7 +277,7 @@ $.extend(AjaxIM.prototype, {
 
         if(this.username && store.get(this.username + '-offline') == true) {
             this.offline = true;
-            
+
             var self = this;
             setTimeout(function() { self._showReconnect(); }, 0);
             return;
@@ -308,7 +312,7 @@ $.extend(AjaxIM.prototype, {
 
             $('#imjs-friends').removeClass('imjs-not-connected')
                               .addClass('imjs-' + status[0]);
-            
+
             $('#imjs-button-' + status[0]).addClass('imjs-toggled');
             if(status[0] == 'away') {
                 setTimeout(function() {
@@ -336,11 +340,11 @@ $.extend(AjaxIM.prototype, {
 
         var activeTab = store.get(this.username + '-activeTab');
         if(activeTab && activeTab in this.chats) {
-            this.chats[activeTab].parents('.imjs-tab').click();
+            this.chats[activeTab].parents('.imjs-tab').show().click();
             var msglog = this.chats[activeTab].find('.imjs-msglog');
             msglog[0].scrollTop = msglog[0].scrollHeight;
         }
-        
+
         // Set username in Friends list
         var header = $('#imjs-friends-panel .imjs-header');
         header.html(header.html().replace('{username}', this.username));
@@ -401,6 +405,7 @@ $.extend(AjaxIM.prototype, {
     // === //private// {{{AjaxIM.}}}**{{{_parseMessages(messages)}}}** ===
     //
     _parseMessage: function(message) {
+        _dbg(['_parseMessage', message]);
         var self = this;
         $(this).trigger('parseMessage', [message]);
 
@@ -423,11 +428,11 @@ $.extend(AjaxIM.prototype, {
                     self.addFriend(friend[0], friend[1], 'Friends');
                 });
                 store.set(this.username + '-friends', this.friends);
-                
+
                 // Set username in Friends list
                 var header = $('#imjs-friends-panel .imjs-header');
                 header.html(header.html().replace('{username}', this.username));
-                
+
                 // Set status available
                 $('#imjs-away-message-text, #imjs-away-message-text-arrow').hide();
                 $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
@@ -446,7 +451,7 @@ $.extend(AjaxIM.prototype, {
 
             case 'notice':
             break;
-            
+
             case 'goodbye':
                 this._notConnected();
             break;
@@ -468,13 +473,14 @@ $.extend(AjaxIM.prototype, {
     // * {{{from}}} is the username of the sender.
     // * {{{message}}} is the body.
     incoming: function(from, message) {
+        _dbg(['incoming', from, message]);
         // check if IM exists, otherwise create new window
         // TODO: If friend is not on the buddylist,
         // should add them to a temp list?
         var chatbox = this._createChatbox(from),
             tab = chatbox.parents('.imjs-tab');
 
-        if(!$('#imjs-bar .imjs-selected').length) {
+        if(!$('#imjs-bar .imjs-selected').show().length) {
             tab.click();
         } else if(tab.data('state') != 'active') {
             this.notification(tab);
@@ -516,8 +522,11 @@ $.extend(AjaxIM.prototype, {
                     .attr('id', user_id)
                     .data('friend', username)
                     .appendTo(group_item.find('ul'));
-            if(status[0] == 'offline')
+            if(status[0] == 'offline'){
+              if(this.settings.hideOffline){
                 user_item.hide();
+              }
+            }
             user_item.html(
                 user_item.html()
                          .replace('{username}', username)
@@ -597,7 +606,8 @@ $.extend(AjaxIM.prototype, {
             chatbox.data('username', username);
 
             if(username in this.friends) {
-                status = this.friends[username].status;
+                var status = this.friends[username].status;
+                if(typeof status != 'string'){status = status[0];}
                 tab.addClass('imjs-' + status);
             }
 
@@ -819,6 +829,7 @@ $.extend(AjaxIM.prototype, {
     // used should "you" send the user an IM while they are away, or if their status is viewed
     // in another way (such as via the friends list [**not yet implemented**]).
     _friendUpdate: function(friend, status, statusMessage) {
+        _dbg(['_friendUpdate', friend, status, statusMessage]);
         if(this.chats[friend]) {
             var tab = this.chats[friend].parents('.imjs-tab');
             var tab_class = 'imjs-tab';
@@ -853,8 +864,10 @@ $.extend(AjaxIM.prototype, {
                               .attr('status', statusMessage);
 
             if(status == 'offline') {
+              if(this.settings.hideOffline){
                 $('#' + friend_id + ':visible').slideUp();
                 $('#' + friend_id + ':hidden').hide();
+              }
             } else if(!$('#' + friend_id + ':visible').length) {
                 $('#' + friend_id).slideDown();
             }
@@ -876,7 +889,7 @@ $.extend(AjaxIM.prototype, {
         if($('#imjs-friends').hasClass('imjs-selected'))
             this.activateTab($('#imjs-friends'));
     },
-    
+
     _showReconnect: function() {
         $('#imjs-reconnect').show();
     },
@@ -1002,7 +1015,7 @@ $.extend(AjaxIM.prototype, {
                             store.set(self.username + '-status',
                                       self.current_status);
                         break;
-    
+
                         case 'error':
                         default:
                             $(self).trigger('changeStatusFailed',
@@ -1377,6 +1390,7 @@ AjaxIM.get = function(url, data, successFunc, failureFunc) {
 };
 
 AjaxIM.request = function(url, type, data, successFunc, failureFunc) {
+    _dbg(['AjaxIM.request', type, url, data]);
     var errorTypes = ['timeout', 'error', 'notmodified', 'parseerror'];
     if(typeof failureFunc != 'function')
         failureFunc = function(){};
@@ -1420,6 +1434,7 @@ AjaxIM.request = function(url, type, data, successFunc, failureFunc) {
 // static function called outside of the initialized AjaxIM object; the other
 // is only called within the initalized AjaxIM object.
 AjaxIM.incoming = function(data) {
+    _dbg(['AjaxIM.incoming', data]);
     if(!AjaxIM.client)
         return false;
 
@@ -1457,11 +1472,11 @@ AjaxIM.l10n = {
     notConnected: 'You are currently not connected or the server is not available. ' +
                   'Please ensure that you are signed in and try again.',
     notConnectedTip: 'You are currently not connected.',
-    
+
     defaultAway: 'I\'m away.'
 };
 
-AjaxIM.debug = true;
+//AjaxIM.debug = true;
 function _dbg(msg) {
     if(AjaxIM.debug && window.console) console.log(msg);
 }
