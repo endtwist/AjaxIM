@@ -7,11 +7,18 @@
                 <span>{username}</span>
                 <a href="#" class="imjs-minimize">_</a>
             </div>
+            <div id="imjs-status-panel">
+                <textarea id="imjs-away-message-text"></textarea>
+                <div id="imjs-away-message-text-arrow"></div>
+                <a href="#" id="imjs-button-available" class="imjs-button"><span>&bull;</span> Available</a>
+                <a href="#" id="imjs-button-away" class="imjs-button"><span>&bull;</span> Away</a>
+                <a href="#" id="imjs-button-offline" class="imjs-button"><span>&bull;</span> Offline</a>
+            </div>
             <ul id="imjs-friends-list">
                 <li class="imjs-friend-group imjs-default">
                     <span class="imjs-friend-group-header">{group}</span>
                     <ul>
-                        <li class="imjs-friend imjs-default"><strong>&bull;</strong> {username}</li>
+                        <li class="imjs-friend imjs-default"><strong>&bull;</strong><span>{username}</span><span class="imjs-friend-status">{status}</span></li>
                     </ul>
                 </li>
             </ul>
@@ -20,6 +27,7 @@
             </form>
         </div>    
     </li>
+    <li id="imjs-reconnect"><span class="imjs-tab-text">&#8635;</span></li>
     <li id="imjs-scroll-left" class="imjs-scroll">{count}</li>
     <li class="imjs-tab imjs-default">
         <span class="imjs-tab-text"><strong>&bull;</strong> {label} <a href="#" class="imjs-close">x</a></span>

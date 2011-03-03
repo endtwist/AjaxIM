@@ -49,7 +49,8 @@ AjaxIM = function(options, actions) {
         this.actions = $.extend({
             listen: this.settings.pollServer + '/listen',
             send: this.settings.pollServer + '/message',
-            status: this.settings.pollServer + '/status'
+            status: this.settings.pollServer + '/status',
+            signoff: this.settings.pollServer + '/signoff'
         }, actions);
 
         // We load the theme dynamically based on the passed
@@ -80,7 +81,7 @@ AjaxIM = function(options, actions) {
         });
 
         $('.imjs-chatbox .imjs-minimize').live('click', function() {
-            $(this).parents('.imjs-tab').click();
+            $(this).parents('.imjs-selected').click();
         });
 
         // Setup message sending for all chatboxes
@@ -174,10 +175,81 @@ AjaxIM = function(options, actions) {
             return false;
         });
 
+        // Setup status buttons
+        $('#imjs-status-panel .imjs-button').live('click', function() {
+            var status = this.id.split('-')[2];
+
+            $('#imjs-away-message-text, #imjs-away-message-text-arrow').animate({
+                opacity: (status == 'away' ? 'show' : 'hide'),
+                height: (status == 'away' ? 'show' : 'hide')
+            }, 50);
+            
+            $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
+            $(this).addClass('imjs-toggled');
+            
+            if(self.current_status[0] == 'away')
+                self._last_status_message = $('#imjs-away-message-text').val();
+
+            $('#imjs-away-message-text').val(status == 'away'
+                                                ? self._last_status_message ||
+                                                  AjaxIM.l10n.defaultAway
+                                                : '');
+
+            self.status(status, $('#imjs-away-message-text').val());
+            return false;
+        });
+        
+        // Allow status message to be changed
+        $('#imjs-away-message-text')
+            .live('keyup', (function() {
+                var msg_type_timer = null;
+                
+                return function() {
+                    if(msg_type_timer) clearTimeout(msg_type_timer);
+    
+                    msg_type_timer = setTimeout(function() {
+                        self._last_status_message = 
+                        self.current_status[1] = $('#imjs-away-message-text')
+                                                    .addClass('imjs-loading').val();
+                        self.status.apply(self, self.current_status);
+                    }, 250);
+                };
+            })());
+        $(this).bind('changeStatusSuccessful changeStatusFailed', function() {
+            $('#imjs-away-message-text').removeClass('imjs-loading');
+        });
+        
+        // Setup reconnect button
+        $('#imjs-reconnect').live('click', function() {
+            self.offline = false;
+            store.remove(self.username + '-offline');
+            $('#imjs-reconnect').hide();
+            $('.imjs-input').attr('disabled', false);
+            
+            // Restore status to available
+            $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
+            $('#imjs-button-available').addClass('imjs-toggled');
+            $(self.statuses).each(function() {
+                $('#imjs-friends').removeClass('imjs-' + this);
+            });
+            $('#imjs-friends').addClass('imjs-available');
+            $('#imjs-away-message-text, #imjs-away-message-text-arrow')
+                .css('display', 'none');
+            
+            // Set status
+            self.current_status = ['available', ''];
+            store.set(self.username + '-status', ['available', '']);
+            self.status('available', '');
+            
+            // Reconnect
+            self.storage();
+            self.listen();
+        });
+
         // Initialize the chatbox hash
         this.chats = {};
-        this.friends = {};
 
+        // On window resize, check scroller visibility
         $(window).resize(function() {
             try {
                 self._scrollers();
@@ -197,11 +269,19 @@ $.extend(AjaxIM.prototype, {
         this._scrollers();
 
         this.username = store.get('user');
+        this._lastReconnect = 0;
+
+        if(this.username && store.get(this.username + '-offline') == true) {
+            this.offline = true;
+            
+            var self = this;
+            setTimeout(function() { self._showReconnect(); }, 0);
+            return;
+        }
 
         if(this.username)
             this.storage();
 
-        this._lastReconnect = 0;
         this.listen();
     },
 
@@ -214,17 +294,28 @@ $.extend(AjaxIM.prototype, {
     storage: function() {
         var self = this,
             chatstore = store.get(this.username + '-chats'),
-            friends = store.get(this.username + '-friends');
+            friends = store.get(this.username + '-friends'),
+            status = store.get(this.username + '-status') || ['available', ''];
 
         this.chatstore = chatstore || {};
         this.friends = {};
+        this.current_status = status;
 
         if(friends) {
             $.each(friends, function(friend, data) {
                 self.addFriend(friend, data.status, data.group);
             });
 
-            $('#imjs-friends').removeClass('imjs-not-connected');
+            $('#imjs-friends').removeClass('imjs-not-connected')
+                              .addClass('imjs-' + status[0]);
+            
+            $('#imjs-button-' + status[0]).addClass('imjs-toggled');
+            if(status[0] == 'away') {
+                setTimeout(function() {
+                    $('#imjs-away-message-text, #imjs-away-message-text-arrow').show();
+                }, 250);
+                $('#imjs-away-message-text').val(this.current_status[1]);
+            }
         }
 
         $.each(this.chatstore, function(username, convo) {
@@ -233,6 +324,9 @@ $.extend(AjaxIM.prototype, {
             var chatbox = self._createChatbox(username, true),
                 msglog = chatbox.find('.imjs-msglog').empty();
             chatbox.data('lastDateStamp', null).css('display', 'none');
+
+            if(typeof convo == 'string')
+                convo = self.chatstore[username] = JSON.parse(convo);
 
             // Restore all messages, date stamps, and errors
             msglog.html(convo.join(''));
@@ -246,6 +340,10 @@ $.extend(AjaxIM.prototype, {
             var msglog = this.chats[activeTab].find('.imjs-msglog');
             msglog[0].scrollTop = msglog[0].scrollHeight;
         }
+        
+        // Set username in Friends list
+        var header = $('#imjs-friends-panel .imjs-header');
+        header.html(header.html().replace('{username}', this.username));
     },
 
     // === //private// {{{AjaxIM.}}}**{{{_clearSession()}}}** ===
@@ -253,14 +351,17 @@ $.extend(AjaxIM.prototype, {
     // Clears all session data from the last known user.
     _clearSession: function() {
         var last_user = store.get('user');
-        $.each(['friends', 'activeTab', 'chats'], function(i, key) {
-            store.remove(last_user + '-' + key);
-        });
+        $.each(['friends', 'activeTab', 'chats', 'status', 'connected'],
+               function(i, key) {
+                   store.remove(last_user + '-' + key);
+               });
         store.set('user', '');
 
         this.chats = {};
         this.friends = {};
         this.chatstore = {};
+        this.current_status = ['available', ''];
+
         $('.imjs-tab').not('.imjs-tab.imjs-default').remove();
         $('.imjs-friend-group').not('.imjs-friend-group.imjs-default').remove();
 
@@ -271,13 +372,30 @@ $.extend(AjaxIM.prototype, {
     //
     // Queries the server for new messages.
     listen: function() {
-        var self = this,
-            hp = this.actions.listen.replace('http://', '').split('/');
-        this.socket = new io.Socket(hp[0], {resource: hp[1]});
-        this.socket.connect();
-        this.socket.on('message', function(data) {
-            self._parseMessage(JSON.parse(data));
-        });
+        if(this.offline) return;
+
+        var self = this;
+        AjaxIM.get(
+            this.actions.listen,
+            {},
+            function(response) {
+                if(response)
+                    self._parseMessage(response);
+
+                setTimeout(function() { self.listen(); }, 0);
+            },
+            function(error) {
+                self._notConnected();
+                $(self).trigger('pollFailed', ['not connected']);
+
+                // Try reconnecting in n*2 seconds (max 16)
+                self._reconnectIn = (self._lastReconnect < (new Date()) - 60000)
+                                     ? 1000
+                                     : Math.min(self._reconnectIn * 2, 16000);
+                self._lastReconnect = new Date();
+                setTimeout(function() { self.listen(); }, self._reconnectIn);
+            }
+        );
     },
 
     // === //private// {{{AjaxIM.}}}**{{{_parseMessages(messages)}}}** ===
@@ -291,17 +409,29 @@ $.extend(AjaxIM.prototype, {
                 this._clearSession();
 
                 this.username = message.username;
+                this.current_status = ['available', ''];
                 store.set('user', message.username);
-                $('#imjs-friends').removeClass('imjs-not-connected');
+                store.set(this.username + '-status', this.current_status);
+
+                $('#imjs-friends').attr('class', 'imjs-available');
                 $.each(message.friends, function() {
                     var friend;
                     if(this.length == 2)
                         friend = this;
                     else
-                        friend = [this.toString(), 'offline'];
+                        friend = [this.toString(), ['offline', '']];
                     self.addFriend(friend[0], friend[1], 'Friends');
                 });
                 store.set(this.username + '-friends', this.friends);
+                
+                // Set username in Friends list
+                var header = $('#imjs-friends-panel .imjs-header');
+                header.html(header.html().replace('{username}', this.username));
+                
+                // Set status available
+                $('#imjs-away-message-text, #imjs-away-message-text-arrow').hide();
+                $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
+                $('#imjs-button-available').addClass('imjs-toggled');
             break;
 
             case 'message':
@@ -315,6 +445,10 @@ $.extend(AjaxIM.prototype, {
             break;
 
             case 'notice':
+            break;
+            
+            case 'goodbye':
+                this._notConnected();
             break;
 
             default:
@@ -378,18 +512,23 @@ $.extend(AjaxIM.prototype, {
         if(!$('#' + user_id).length) {
             var user_item = group_item.find('ul li.imjs-default').clone()
                     .removeClass('imjs-default')
-                    .addClass('imjs-' + status)
+                    .addClass('imjs-' + status[0])
                     .attr('id', user_id)
                     .data('friend', username)
                     .appendTo(group_item.find('ul'));
-            if(status[0] == 0) user_item.hide();
-            user_item.html(user_item.html().replace('{username}', username));
+            if(status[0] == 'offline')
+                user_item.hide();
+            user_item.html(
+                user_item.html()
+                         .replace('{username}', username)
+                         .replace('{status}', status[1])
+            );
+            user_item.find('.imjs-friend-status')
+                     .attr('title', status[1]);
         }
 
         this.friends[username] = {status: status, group: group};
-
         this._updateFriendCount();
-
         return this.friends[username];
     },
 
@@ -399,10 +538,9 @@ $.extend(AjaxIM.prototype, {
     // in the friend tab.
     _updateFriendCount: function() {
         var friendsLength = 0;
-        for(var f in this.friends) {
-            if(this.friends[f].status[0] != 0)
-                friendsLength++;
-        }
+        $.each(this.friends, function(u, f) {
+            if(f.status[0] != 'offline') friendsLength++;
+        });
         $('#imjs-friends .imjs-tab-text span span').html(friendsLength);
     },
 
@@ -699,7 +837,7 @@ $.extend(AjaxIM.prototype, {
 
             var date_stamp_date = date_stamp.find('.imjs-date-date').html(
                 AjaxIM.l10n[
-                    'chat' + status[0].toUpperCase() + status.slice(1)
+                    'chat' + status.toUpperCase() + status.slice(1)
                 ].replace(/%s/g, friend));
 
             var msglog = this.chats[friend].find('.imjs-msglog');
@@ -710,8 +848,11 @@ $.extend(AjaxIM.prototype, {
         if(this.friends[friend]) {
             var friend_id = 'imjs-friend-' + md5.hex(friend + this.friends[friend].group);
             $('#' + friend_id).attr('class', 'imjs-friend imjs-' + status);
+            $('#' + friend_id).find('.imjs-friend-status')
+                              .html(statusMessage)
+                              .attr('status', statusMessage);
 
-            if(status == 0) {
+            if(status == 'offline') {
                 $('#' + friend_id + ':visible').slideUp();
                 $('#' + friend_id + ':hidden').hide();
             } else if(!$('#' + friend_id + ':visible').length) {
@@ -729,7 +870,15 @@ $.extend(AjaxIM.prototype, {
     // friends list to "not connected" and empties it; disallows new messages
     // to be sent.
     _notConnected: function() {
-        $('#imjs-friends').addClass('imjs-not-connected').unbind('click', this.activateTab);
+        $('#imjs-friends')
+            .addClass('imjs-not-connected')
+            .unbind('click', this.activateTab);
+        if($('#imjs-friends').hasClass('imjs-selected'))
+            this.activateTab($('#imjs-friends'));
+    },
+    
+    _showReconnect: function() {
+        $('#imjs-reconnect').show();
     },
 
     // === {{{AjaxIM.}}}**{{{send(to, message)}}}** ===
@@ -805,34 +954,68 @@ $.extend(AjaxIM.prototype, {
     // ==== Parameters ====
     // * {{{s}}} is the status code, as defined by {{{AjaxIM.statuses}}}.
     // * {{{message}}} is the custom status message.
-    status: function(s, message) {
+    status: function(value, message) {
+        var self = this;
+
         // update status icon(s)
-        if(!this.statuses[s])
+        if(!~this.statuses.indexOf(value))
             return;
 
-        $('#imjs-friends').attr('class', 'imjs-' + s);
+        // check if selected before writing over the class!
+        $(this.statuses).each(function() {
+            $('#imjs-friends').removeClass('imjs-' + this);
+        });
+        $('#imjs-friends').addClass('imjs-' + value);
 
-        $(this).trigger('changingStatus', [s, message]);
+        $(this).trigger('changingStatus', [value, message]);
 
-        AjaxIM.post(
-            this.actions.status,
-            {status: this.statuses[s], message: message},
-            function(result) {
-                switch(result.r) {
-                    case 'ok':
-                        $(self).trigger('changeStatusSuccessful', [s, message]);
-                    break;
+        if(value == 'offline') {
+            self._notConnected();
+            self._showReconnect();
+            store.set(this.username + '-offline', true);
+            self.offline = true;
+            $('.imjs-input').attr('disabled', true);
 
-                    case 'error':
-                    default:
-                        $(self).trigger('changeStatusFailed', [result.e, s, message]);
-                    break;
+            AjaxIM.post(
+                this.actions.signoff,
+                {},
+                function(result) {
+                    if(result.type == 'success')
+                        $(self).trigger('changeStatusSuccessful',
+                                        [value, null]);
+                },
+                function(error) {
+                    $(self).trigger('changeStatusFailed',
+                                    ['not connected', value, null]);
                 }
-            },
-            function(error) {
-                $(self).trigger('changeStatusFailed', ['not connected', s, message]);
-            }
-        );
+            );
+        } else {
+            AjaxIM.post(
+                this.actions.status,
+                {status: value, message: message},
+                function(result) {
+                    switch(result.type) {
+                        case 'success':
+                            $(self).trigger('changeStatusSuccessful',
+                                            [value, message]);
+                            self.current_status = [value, message];
+                            store.set(self.username + '-status',
+                                      self.current_status);
+                        break;
+    
+                        case 'error':
+                        default:
+                            $(self).trigger('changeStatusFailed',
+                                            [result.e, value, message]);
+                        break;
+                    }
+                },
+                function(error) {
+                    $(self).trigger('changeStatusFailed',
+                                    ['not connected', value, message]);
+                }
+            );
+        }
     },
 
     // === {{{AjaxIM.}}}**{{{statuses}}}** ===
@@ -874,14 +1057,17 @@ $.extend(AjaxIM.prototype, {
 
         // Set up the friends list actions
         $(document).click(function(e) {
-            if(e.target.id == 'imjs-friends' ||
+            if(~['imjs-friends'].indexOf(e.target.id) ||
                 $(e.target).parents('#imjs-friends').length) {
                 return;
             }
 
             if($('#imjs-friends').data('state') == 'active')
                 self.activateTab.call(self, $('#imjs-friends'));
+            else if($('#imjs-status').data('state') == 'active')
+                self.activateTab.call(self, $('#imjs-status'));
         });
+
         $('#imjs-friends')
             .data('state', 'minimized')
             .click(function(e) {
@@ -892,8 +1078,10 @@ $.extend(AjaxIM.prototype, {
             })
             .mouseenter(function() {
                 if($(this).hasClass('imjs-not-connected')) {
-                    $('.imjs-tooltip').css('display', 'block');
-                    $('.imjs-tooltip p').html(AjaxIM.l10n.notConnectedTip);
+                    $('.imjs-tooltip')
+                        .css('display', 'block')
+                        .find('p')
+                        .html(AjaxIM.l10n.notConnectedTip);
 
                     var tip_left = $(this).offset().left -
                         $('.imjs-tooltip').outerWidth() +
@@ -912,6 +1100,7 @@ $.extend(AjaxIM.prototype, {
                     $('.imjs-tooltip').css('display', '');
                 }
             });
+
         $('#imjs-friends-panel').css('display', 'none');
     },
 
@@ -931,6 +1120,7 @@ $.extend(AjaxIM.prototype, {
                 $('#imjs-bar > li')
                     .not(tab)
                     .not('#imjs-friends, .imjs-scroll, .imjs-default')
+                    .add(tab.attr('id') == 'imjs-status' ? '#imjs-friends' : '')
                     .removeClass('imjs-selected')
                     .each(function() {
                         var self = $(this);
@@ -941,6 +1131,12 @@ $.extend(AjaxIM.prototype, {
                                 chatbox.css('display', 'none');
                         }
                     });
+            } else {
+                $('#imjs-status')
+                    .removeClass('imjs-selected')
+                    .data('state', 'minimized')
+                    .find('.imjs-chatbox')
+                    .css('display', 'none');
             }
 
             if(chatbox && chatbox.css('display') == 'none')
@@ -1192,9 +1388,8 @@ AjaxIM.request = function(url, type, data, successFunc, failureFunc) {
         type: type,
         cache: false,
         timeout: 299000,
-        //callback: 'jsonp' + (new Date()).getTime(),
         success: function(json, textStatus, xhr) {
-            if(xhr.status == '0') return;
+            if('status' in xhr && xhr.status == '0') return;
             _dbg(json);
             successFunc(json);
         },
@@ -1261,7 +1456,9 @@ AjaxIM.l10n = {
 
     notConnected: 'You are currently not connected or the server is not available. ' +
                   'Please ensure that you are signed in and try again.',
-    notConnectedTip: 'You are currently not connected.'
+    notConnectedTip: 'You are currently not connected.',
+    
+    defaultAway: 'I\'m away.'
 };
 
 AjaxIM.debug = true;

@@ -21,7 +21,7 @@ module.exports = function setupHub(options) {
         }
 
         if(req.sessionID) {
-            store.get(req.sessionID, function(err, sess) {
+            store.get(req, function(err, sess) {
                 if(err) {
                     next(err);
                     return;
@@ -36,7 +36,7 @@ module.exports = function setupHub(options) {
 
                 sess.touch();
                 if(url.parse(req.url).pathname === '/listen') {
-                    req.connection.setTimeout((5).minutes);
+                    req.connection.setTimeout(5 * 60 * 1000);
                     sess.listener(res);
                     store.set(req.sessionID, sess);
 
@@ -51,8 +51,8 @@ module.exports = function setupHub(options) {
                 res.message = function(to, package) {
                     store.message(req.session, to, package);
                 };
-                res.status = function(status) {
-                    req.session.status = status;
+                res.status = function(value, message) {
+                    req.session.status(value, message);
                 };
                 res.signOff = function() { store.signOff(req.sessionID); };
 

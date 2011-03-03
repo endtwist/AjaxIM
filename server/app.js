@@ -2,11 +2,10 @@
 var sys = require('sys'),
     express = require('express'),
     io = require('./libs/socket.io'),
-    packages = require('./libs/packages');
-Object.merge(global, require('ext'));
-
-Object.merge(global, require('./settings'));
-try { Object.merge(global, require('./settings.local')); } catch(e) {}
+    packages = require('./libs/packages'),
+    o_ = require('./libs/utils');
+o_.merge(global, require('./settings'));
+try { o_.merge(global, require('./settings.local')); } catch(e) {}
 
 try {
     var daemon = require('./libs/daemon/daemon'),
@@ -58,8 +57,8 @@ var app = express.createServer(
     express.cookieDecoder(),
     express.bodyDecoder(),
     require('./middleware/im')({
-        lifetime: (15).minutes,
-        reapInterval: (1).minute,
+        maxAge: 15 * 60 * 1000,
+        reapInterval: 60 * 1000,
         authentication: require('./libs/authentication/' + AUTH_LIBRARY)
     })
 );
@@ -80,7 +79,8 @@ app.configure('development', function() {
 
     app.use(express.logger());
     app.use('/dev', express.router(require('./dev/app')));
-    app.use(express.staticProvider(__dirname + '/dev/public'));
+    app.use(express.staticProvider(
+                require('path').join(__dirname, '../client')));
     app.use(express.errorHandler({dumpExceptions: true, showStack: true}));
 });
 
@@ -213,9 +213,14 @@ app.post('/message/typing', function(req, res) {
 
 app.post('/status', function(req, res) {
     if(~packages.STATUSES.indexOf(req.body['status'])) {
-        res.status(req.body.status);
+        res.status(req.body.status, req.body.message);
         res.send(new packages.Success('status updated'));
     } else {
         res.send(new packages.Error('invalid status'));
     }
+});
+
+app.post('/signoff', function(req, res) {
+    res.signOff();
+    res.send(new packages.Success('goodbye'));
 });

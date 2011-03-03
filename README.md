@@ -6,13 +6,23 @@ Ajax IM ("Ajax Instant Messenger") is an instant messenger for the web. It is
 intended to be integrated with existing websites to provide a more interactive
 community experience.
 
+## Features
+
+* Instant communication between connected users
+* Robust backend server built on [Node.js](http://nodejs.org)
+* Can be integrated with virtually any existing website
+* Seamless authentication
+* Works across an entire website, unobtrusively
+* Automatic state management between page reloads
+* User state and statuses
+* and _much_ more!
 
 ## Installation
 
-Install `Node.js` (known to work with v0.2.0+):
-    wget http://nodejs.org/dist/node-v0.2.1.tar.gz
-    tar xzf node-v0.2.1.tar.gz
-    cd node-v0.2.1
+Install `Node.js`:
+    wget http://nodejs.org/dist/node-v0.2.5.tar.gz
+    tar xzf node-v0.2.5.tar.gz
+    cd node-v0.2.5
     ./configure
     make
     make install
@@ -22,9 +32,6 @@ Install Node Package Manager (`npm`):
 
 Install `Express.js` and `Connect` (included automatically):
     npm install express
-
-Install `Ext.js` (fixed version for Node.js 0.2.0+ and latest `npm` until changes are merged):
-    npm install http://github.com/endtwist/ext.js/tarball/0698dfdc0ff7d79926f3215779c27774120ce7f4
 
 Compile the daemon add-on if you plan on letting the server daemonize itself:
     cd server/libs/daemon
@@ -65,6 +72,17 @@ Then head over to the development page that will initialize the client:
     http://localhost:8000/dev/
 
 That's it!
+
+## More Information
+
+* Follow [endtwist](http://twitter.com/endtwist) on twitter for updates
+* [Google Group](http://groups.google.com/group/ajaxim) for discussion
+* [GitHub Wiki](https://github.com/endtwist/AjaxIM/wiki) for guidance
+
+## Node Compatibility
+
+The `master` branch of Ajax IM is compatible with node --version:
+    v0.2.5
 
 ## Contributing
 

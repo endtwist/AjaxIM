@@ -1,6 +1,7 @@
 var events = require('events'),
     sys = require('sys'),
     packages = require('../../libs/packages'),
+    o_ = require('../../libs/utils'),
     User = require('./user');
 
 var Hub = module.exports = function Hub(options) {
@@ -8,8 +9,8 @@ var Hub = module.exports = function Hub(options) {
     this.auth = options.authentication;
     this.sessions = {};
 
-    this.maxAge = options.maxAge || 14400000;
-    this.reapInterval = options.reapInterval || 60000;
+    this.maxAge = options.maxAge || 4 * 60 * 60 * 1000;
+    this.reapInterval = options.reapInterval || 60 * 1000;
 
     if(this.reapInterval !== -1) {
         setInterval(function(self) {
@@ -17,14 +18,21 @@ var Hub = module.exports = function Hub(options) {
         }, this.reapInterval, this);
     }
 
-    this.events.addListener('update', (function(package) {
-        if(package.constructor === exports.Offline) {
-            for(var i = 0, l = this.users.length; i < l; i++) {
-                if(this.users[i].get('username') == package.user)
-                    this.users.splice(i, 1);
+    this.events.addListener('update', o_.bind(function(package) {
+        var _package = package.toJSON();
+        if(package.type == 'status' && package.status == 'offline') {
+            var sids = Object.keys(this.sessions), sid, sess;
+            for(sid in this.sessions) {
+                sess = this.sessions[sid];
+                if(sess.data('username') == package.username) {
+                    if(sess.listeners.length)
+                        sess.send(200, {type: 'goodbye'});
+                    delete this.sessions[sid];
+                    break;
+                }
             }
         }
-    }).bind(this));
+    }, this));
 };
 
 Hub.prototype.destroy = function(sid, fn) {
@@ -37,48 +45,49 @@ Hub.prototype.reap = function(ms) {
     for(var i = 0, len = sids.length; i < len; ++i) {
         var sid = sids[i], sess = this.sessions[sid];
         if(sess.lastAccess < threshold) {
-            sess.signoff((function() {
-                delete this.sessions[sid];
-            }).bind(this));
+            this.events.emit('update', new packages.Offline(sess.data('username')));
         }
     }
 };
 
-Hub.prototype.get = function(sid, fn) {
-    if(this.sessions[sid]) {
-        fn(null, this.sessions[sid]);
+Hub.prototype.get = function(req, fn) {
+    if(this.sessions[req.sessionID]) {
+        fn(null, this.sessions[req.sessionID]);
     } else {
-        this.auth.authenticate(sid, (function(data) {
+        this.auth.authenticate(req, o_.bind(function(data) {
             if(data) {
-                var session = new User(sid, data);
-                this.set(sid, session);
+                var session = new User(req.sessionID, data);
+                this.set(req.sessionID, session);
 
-                this.auth.friends(sid, data, (function(friends) {
+                this.auth.friends(req, data, o_.bind(function(friends) {
                     var friends_copy = friends.slice();
-                    Object.values(this.sessions).filter(function(friend) {
+                    o_.values(this.sessions).filter(function(friend) {
                         return ~friends.indexOf(friend.data('username'));
-                    }).each(function(friend) {
+                    }).forEach(function(friend) {
                         var username = friend.data('username');
                         friends_copy[friends_copy.indexOf(username)] =
-                                            [username, friend.data('status')];
+                                            [username, friend.status()];
                     }, this);
 
                     session._friends(friends_copy);
-                    session.events.addListener('status', (function(value) {
-                        this.events.emit(
-                            'update',
-                            new packages.Status(session.data('username'), value)
-                        );
-                    }).bind(this));
+                    session.events.addListener('status',
+                        o_.bind(function(value, message) {
+                            this.events.emit(
+                                'update',
+                                new packages.Status(session.data('username'),
+                                                    value,
+                                                    message)
+                            );
+                        }, this));
                     this.events.addListener('update',
-                                        session.receivedUpdate.bind(session));
-                    this.set(sid, session);
+                                      o_.bind(session.receivedUpdate, session));
+                    this.set(req.sessionID, session);
                     fn(null, session);
-                }).bind(this));
+                }, this));
             } else {
                 fn();
             }
-        }).bind(this));
+        }, this));
     }
 };
 
@@ -110,7 +119,8 @@ Hub.prototype.message = function(from, to, package) {
 };
 
 Hub.prototype.signOff = function(sid) {
-    this.get(sid, function(session) {
-        if(session) this.events.emit('update', new packages.Offline(this));
-    });
+    if(sid in this.sessions)
+        this.events.emit('update',
+                         new packages.Offline(
+                            this.sessions[sid].data('username')));
 };

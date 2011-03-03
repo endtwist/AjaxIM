@@ -1,5 +1,6 @@
 var events = require('events'),
-    packages = require('../../libs/packages');
+    packages = require('../../libs/packages'),
+    o_ = require('../../libs/utils');
 
 var User = module.exports = function(id, data) {
     this.id = id;
@@ -10,13 +11,13 @@ var User = module.exports = function(id, data) {
     this._data = data;
 
     this.events = new events.EventEmitter();
-    this.status = packages.STATUSES[0];
+    this.status(packages.STATUSES[0], '');
 
-    setInterval(this._expireConns.bind(this), 500);
+    setInterval(o_.bind(this._expireConns, this), 500);
 };
 
 User.prototype.receivedUpdate = function(package) {
-    if(this.friends.indexOf(package.user))
+    if(this.friends.indexOf(package.username))
         this.send(package);
 };
 
@@ -103,12 +104,11 @@ User.prototype.touch = function() {
     this.lastAccess = +new Date;
 };
 
-Object.defineProperty(User.prototype, 'status', {
-    get: function() {
+User.prototype.status = function(value, message) {
+    if(!value)
         return this._status;
-    },
-    set: function(value) {
-        this._status = value;
-        this.events.emit('status', value);
-    }
-});
+    
+    this._status = value;
+    this._status_message = message;
+    this.events.emit('status', value, message);
+};
