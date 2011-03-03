@@ -30,46 +30,8 @@ Install `Node.js`:
 Install Node Package Manager (`npm`):
     See instructions at http://github.com/isaacs/npm.
 
-Install `Express.js` and `Connect` (included automatically):
-    npm install express
-
-Compile the daemon add-on if you plan on letting the server daemonize itself:
-    cd server/libs/daemon
-    node-waf configure build
-    cp build/default/daemon.node .
-    rm -rf build
-
-## Installation for Development
-
-If you want to test Ajax IM as a standalone app for development, you will need
-to install [`Jade`](http://github.com/visionmedia/jade) as well.
-
-To install `Jade`:
-    npm install jade
-
-## Starting up the server
-
-Starting the server in _development_ mode is as simple as:
-    node server/app.js
-
-To start the server in _production_ mode:
-    EXPRESS_ENV=production node server/app.js
-
-To start the server as a _daemon_ in _production_ mode:
-    node server/app.js start production
-
-## Testing it out
-
-Once the server is up and running in _development_ mode, you can test it out
-through the included development testing app. The below instructions are
-assuming that you have left all default configuration options. If not, please
-replace the host/port values with the correct ones.
-
-To get started, first initialize a session cookie by going to:
-    http://localhost:8000/dev/cookie
-
-Then head over to the development page that will initialize the client:
-    http://localhost:8000/dev/
+Install `Socket.io` (included automatically):
+    npm install socket-io
 
 That's it!
 
@@ -82,7 +44,7 @@ That's it!
 ## Node Compatibility
 
 The `master` branch of Ajax IM is compatible with node --version:
-    v0.2.5
+    v0.4.1
 
 ## Contributing
 

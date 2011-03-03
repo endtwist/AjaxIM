@@ -14,7 +14,7 @@ APP_HOST = 'localhost';
 APP_PORT = 8000;
 
 // Document me!
-AUTH_LIBRARY = 'default';
+AUTH_LIBRARY = 'example';
 SESSION_STORE = 'memory';
 MESSAGE_HANDLER = 'default';
 
