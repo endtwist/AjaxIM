@@ -27,31 +27,7 @@ AjaxIM = function(options, actions) {
         // upon calling the initialization function, and not set directly.//
         this.settings = $.extend(defaults, options);
 
-        // === {{{AjaxIM.}}}**{{{actions}}}** ===
-        //
-        // Each individual action that the IM engine can execute is predefined here.
-        // By default, it merely appends the action onto the end of the {{{pollServer}}} url,
-        // however, it is possible to define actions individually. //The alternative actions
-        // will be defined upon calling the initialization function, and not set directly.//
-        //
-        // Should you define an action at a different URL, Ajax IM will determine whether
-        // or not this URL is within the current domain. If it is within a subdomain of
-        // the current domain, it will set the document.domain variable for you,
-        // to match a broader hostname scope; the action will continue to use {{{$.post}}}
-        // (the default AJAX method for Ajax IM).
-        //
-        // On the other hand, should you choose a URL outside the current domain
-        // Ajax IM will switch to {{{$.getJSON}}} (a get request) to avoid
-        // cross-domain scripting issues. This means that a server on a different
-        // port or at a different address will need to be able to handle GET
-        // requests rather than POST requests (such as how the Node.JS Ajax IM
-        // server works).
-        this.actions = $.extend({
-            listen: this.settings.pollServer + '/listen',
-            send: this.settings.pollServer + '/message',
-            status: this.settings.pollServer + '/status',
-            signoff: this.settings.pollServer + '/signoff'
-        }, actions);
+        this.socket = new io.Socket();
 
         // We load the theme dynamically based on the passed
         // settings. If the theme is set to false, we assume
@@ -282,8 +258,13 @@ $.extend(AjaxIM.prototype, {
         if(this.username)
             this.storage();
 
-        this.listen();
+        this.socket.connect();
+        this.socket.on('connect', this.connected);
+        this.socket.on('message', this.message);
+        this.socket.on('disconnect', this.disconnected);
     },
+    
+    
 
     // === {{{AjaxIM.}}}**{{{storage()}}}** ===
     //
