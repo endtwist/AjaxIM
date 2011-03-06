@@ -10,7 +10,8 @@ MessageHandler.prototype._auth = function(client, message) {
         this.session_store.touch(session, client);
         client.send({
             type: 'AUTH',
-            loggedin: true
+            loggedin: true,
+            username: session.username
         });
     } else {
         var auth_handler = this.auth_handler,
@@ -40,6 +41,8 @@ MessageHandler.prototype._auth = function(client, message) {
                             });
 
                             friends_list[friends_array[i]] = sess.status;
+                        } else if(friends_array[i] == res.username) {
+                            friends_list[friends_array[i]] = 'online';
                         } else {
                             friends_list[friends_array[i]] = 'offline';
                         }
@@ -54,7 +57,9 @@ MessageHandler.prototype._auth = function(client, message) {
                     client.send({
                         type: 'AUTH',
                         loggedin: true,
-                        friends: friends_dict
+                        username: res.username,
+                        friends: friends_list,
+                        identifier: identifier
                     });
                 });
             } else {
@@ -127,6 +132,7 @@ MessageHandler.prototype._disconnect = function(client, SESSION_TIMEOUT) {
 };
 
 MessageHandler.prototype.message = function(client, message) {
+    console.log(message);
     switch(message.type) {
         case 'AUTH':
             this._auth(client, message);

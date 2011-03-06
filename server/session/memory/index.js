@@ -22,7 +22,7 @@ MemorySessionStore.prototype.create = function(username, client, friends) {
     
     if(friends) {
         for(var i = 0, fl = friends.length; i < fl; i++)
-            session.push(friends[i])
+            session.friends.push(friends[i])
     }
     
     this.sessions[username] = session;
@@ -75,7 +75,7 @@ MemorySessionStore.prototype.all = function() {
 };
 
 MemorySessionStore.prototype.remove = function(username) {
-    if(this.session.username) {
+    if(this.sessions[username]) {
         var clientid = this.sessions[username].client.sessionId,
             identifier = this.sessions[username].identifier;
         delete this.sessionClientMap[clientid];

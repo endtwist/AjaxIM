@@ -8,8 +8,9 @@ var http = require('http'),
     client = {
         'im.js': [
             'intro.js',
-            'cookies.js', 'dateformat.js', 'json.js', 'md5.js', 'store.js',
-            /*'templates.js',*/ 'im.js',
+            'cookies.js', 'dateformat.js', 'json.js',
+            'md5.js', 'store.js', 'xxtea.js',
+            'templates.js', 'im.js',
             'outro.js'
         ]
     },
@@ -51,6 +52,8 @@ for(var file in client) {
                         'utf8'
                     );
     var ext = file.split('.').pop();
+    /*
+    // breaks on xxtea library?
     if(ext == 'js' && uglifyjs) {
         // if uglify-js is installed, let's compress
         fileData = uglifyjs.parser.parse(fileData);
@@ -58,6 +61,7 @@ for(var file in client) {
         fileData = uglifyjs.uglify.ast_squeeze(fileData);
         fileData = uglifyjs.uglify.gen_code(fileData);
     }
+    */
     _clientFiles[file] = {
         headers: {
             'Content-Length': fileData.length,

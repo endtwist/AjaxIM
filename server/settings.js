@@ -18,6 +18,9 @@ AUTH_LIBRARY = 'example';
 SESSION_STORE = 'memory';
 MESSAGE_HANDLER = 'default';
 
+// Document me!
+SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
 // === Daemon ===
 //
 // Define where the PID and log files will be deposited when run as a daemon.
