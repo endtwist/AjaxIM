@@ -12,7 +12,7 @@ AjaxIM = function(options) {
                                     {port: this.settings.port});
 
         // Load & wire up the chat bar HTML
-        console.log(Template.bar);
+        _dbg(Template.bar);
         var IM = $('<div id="AjaxIM"></div>')
                     .appendTo('body')
                     .css('display', 'none');
@@ -59,10 +59,30 @@ AjaxIM.prototype._store = function(key, value) {
             .indexOf(key) != -1) {
         this.user[key] = value;
         store.set('user', this.user);
-    } else {
-        if(this.username.length)
+    } else if(this.username.length) {
             store.set(key, Tea.encrypt(JSON.stringify(value), this.username));
     }
+};
+
+AjaxIM.prototype._storeChat = function(username, content) {
+    if(!this.chatstore) this.chatstore = {};
+
+    if(!(username in this.chatstore)) {
+        this.chatstore[username] = [];
+    } else if(this.chatstore[username].length > 300) {
+        // If the chat store gets too long, it becomes slow to load.
+        this.chatstore[username].shift();
+    }
+
+    if(content && content.html.length) {
+        if(content.replace_last)
+            this.chatstore[username].pop();
+
+        this.chatstore[username].push(content.html);
+    }
+
+    store.set('chats',
+              Tea.encrypt(JSON.stringify(this.chatstore), this.username));
 };
 
 AjaxIM.prototype._wiring = function() {
@@ -121,11 +141,11 @@ AjaxIM.prototype._wiring = function() {
 
     // Create a chatbox when a buddylist item is clicked
     $('.imjs-friend').live('click', function() {
-        var chatbox = self._createChatbox($(this).data('friend'));
+        var chatbox = self.createChatbox($(this).data('friend'));
 
         if(chatbox.parents('.imjs-tab').data('state') != 'active') {
             chatbox.parents('.imjs-tab').click();
-            this._store('activeTab', $(this).data('friend'));
+            self._store('activeTab', $(this).data('friend'));
         }
 
         chatbox.find('.imjs-input').focus();
@@ -313,7 +333,7 @@ AjaxIM.prototype._storage = function() {
     var self = this,
         chatstore = Tea.decrypt(store.get('chats') || '', this.username),
         friends = Tea.decrypt(store.get('friends') || '', this.username);
-    console.log(friends)
+    _dbg(friends)
     try {
         this.chatstore = JSON.parse(chatstore);
     } catch(e) {
@@ -347,15 +367,11 @@ AjaxIM.prototype._storage = function() {
     $.each(this.chatstore, function(username, convo) {
         if(!convo.length) return;
 
-        var chatbox = self._createChatbox(username, true),
-            msglog = chatbox.find('.imjs-msglog').empty();
-        chatbox.data('lastDateStamp', null).css('display', 'none');
-
         if(typeof convo == 'string')
             convo = self.chatstore[username] = JSON.parse(convo);
 
-        // Restore all messages, date stamps, and errors
-        msglog.html(convo.join(''));
+        var chatbox = self.createChatbox(username, convo.join(''));
+        chatbox.data('lastDateStamp', null).css('display', 'none');
 
         $(self).trigger('chatRestored', [username, chatbox]);
     });
@@ -400,7 +416,7 @@ AjaxIM.prototype._connected = function() {
 
 AjaxIM.prototype._message = function(msg) {
     var self = this;
-    console.log(msg);
+    _dbg(msg);
     switch(msg.type) {
         case 'AUTH':
             if(msg.loggedin) {
@@ -422,11 +438,14 @@ AjaxIM.prototype._message = function(msg) {
                 }
 
                 $('#imjs-friends').attr('class', 'imjs-available');
-                $.each(msg.friends, function(friend, status) {
-                    self.addFriend(friend, status, 'Friends');
-                });
-                this._store('friends', msg.friends);
-                this.friends = msg.friends;
+                
+                if(msg.friends) {
+                    $.each(msg.friends, function(friend, status) {
+                        self.addFriend(friend, status, 'Friends');
+                    });
+                    this._store('friends', msg.friends);
+                    this.friends = msg.friends;
+                }
 
                 // Set username in Friends list
                 var header = $('#imjs-friends-panel .imjs-header');
@@ -490,6 +509,29 @@ AjaxIM.prototype._updateFriendCount = function() {
         if(f.status != 'offline') friendsLength++;
     });
     $('#imjs-friends .imjs-tab-text span span').html(friendsLength);
+};
+
+AjaxIM.prototype.addTab = function(label, action, closable) {
+    var tab = $(Template.tab).insertAfter('#imjs-scroll-left');
+    tab.attr('id', 'imjs-tab-' + md5.hex(label))
+       .html(tab.html().replace('{label}', label))
+       .data('state', 'minimized');
+
+    var notification = tab.find('.imjs-notification');
+    notification.css('display', 'none')
+        .data('count', 0)
+        .data('default-text', notification.html())
+        .html(notification.html().replace('{count}', '0'));
+
+    if(closable === false)
+        tab.find('.imjs-close').eq(0).remove();
+
+    if(typeof action != 'string') {
+        tab.find('.imjs-chatbox').remove();
+        tab.click(action);
+    }
+
+    return tab;
 };
 
 AjaxIM.prototype.activateTab = function(tab) {
@@ -574,7 +616,8 @@ AjaxIM.prototype.closeTab = function(tab) {
        .data('state', 'closed');
 
     delete this.chatstore[tab.find('.imjs-chatbox').data('username')];
-    store.set(this.username + '-chats', this.chatstore);
+    store.set('chats',
+              Tea.encrypt(JSON.stringify(this.chatstore), this.username));
 
     $(this).trigger('tabToggled', ['closed', tab]);
 
@@ -583,9 +626,151 @@ AjaxIM.prototype.closeTab = function(tab) {
     return false;
 };
 
+AjaxIM.prototype.createChatbox = function(username, contents) {
+    var self = this,
+        chatbox_id = 'imjs-' + md5.hex(username);
+    if(!(chatbox = $('#' + chatbox_id)).length) {
+        // add a tab
+        var tab = this.addTab(username, '#' + chatbox_id);
+        var chatbox = tab.find('.imjs-chatbox');
+
+        chatbox.attr('id', chatbox_id);
+
+        // remove default items from the message log
+        var message_log = chatbox.find('.imjs-msglog').empty();
+
+        // setup the chatbox header
+        var cb_header = chatbox.find('.imjs-header');
+        cb_header.html(cb_header.html().replace('{username}', username));
+
+        if(!contents) {
+            // add a date stamp
+            this._storeChat(username, this._addDateStamp(chatbox));
+        } else {
+            message_log.html(contents);
+        }
+
+        // associate the username with the object and vice-versa
+        this.chats[username] = chatbox;
+        chatbox.data('username', username);
+
+        if(username in this.friends) {
+            status = this.friends[username].status;
+            tab.addClass('imjs-' + status);
+        }
+
+        setTimeout(function() { self._scrollers(); }, 0);
+    } else if(chatbox.parents('.imjs-tab').data('state') == 'closed') {
+        chatbox.find('.imjs-msglog > *').addClass('imjs-msg-old');
+
+        var tab = chatbox.parents('.imjs-tab');
+        if(tab.css('display') == 'none')
+            tab.css('display', '').removeClass('imjs-selected')
+                .insertAfter('#imjs-scroll-left')
+                .data('state', 'minimized');
+
+        if(!no_stamp) {
+            // possibly add a date stamp
+            this._storeChat(username, this._addDateStamp(chatbox));
+        }
+
+        if(!$('#imjs-bar .imjs-selected').length) {
+            tab.click();
+        } else {
+            this.notification(tab);
+        }
+
+        setTimeout(function() { self._scrollers() }, 0);
+    }
+
+    return chatbox;
+};
+
+AjaxIM.prototype._addDateStamp = function(chatbox, time) {
+    var message_log = $(chatbox).find('.imjs-msglog');
+    if(!time)
+       time = (new Date()).getTime();
+
+    var date_stamp = $(Template.datestamp);
+    var date_stamp_time = date_stamp.find('.imjs-msg-time');
+    if(date_stamp_time.length)
+        date_stamp_time.html(dateFormat(time, date_stamp_time.html()));
+
+    var date_stamp_date = date_stamp.find('.imjs-date-date');
+    var formatted_date = dateFormat(time, date_stamp_date.html());
+    if(chatbox.data('lastDateStamp') != formatted_date) {
+        if(date_stamp_date.length)
+            date_stamp_date.html(dateFormat(time, date_stamp_date.html()));
+
+        chatbox.data('lastDateStamp', formatted_date);
+        date_stamp.appendTo(message_log);
+
+        return {
+            replace_last: false,
+            html: jQuery('<div>').append(date_stamp.clone()).html()
+        };
+    } else {
+        return {replace_last: false, html: ''};
+    }
+};
+
+AjaxIM.prototype._addMessage = function(yt, chatbox, username, message, time) {
+    var message_container = chatbox.find('.imjs-msglog > *:last-child'),
+        new_container = false;
+    if(!message_container.hasClass('imjs-msg-' + yt + '-container')) {
+        // message isn't from same person; create new message container
+        message_container =
+            $(Template['message_' + yt + '_outer']
+              .replace('{username}', username))
+                .appendTo(chatbox.find('.imjs-msglog'));
+        new_container = true;
+    }
+
+    // clean up the message
+    message = message.toString().replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/(^|.*)\*([^*]+)\*(.*|$)/, '$1<strong>$2</strong>$3');
+
+    // autolink URLs
+    message = message.replace(
+        new RegExp('([A-Za-z][A-Za-z0-9+.-]{1,120}:[A-Za-z0-9/]' +
+        '(([A-Za-z0-9$_.+!*,;/?:@&~=-])|%[A-Fa-f0-9]{2}){1,333}' +
+        '(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*,;/?:@&~=%-]{0,1000}))?)', 'g'),
+        '<a href="$1" target="_blank">$1</a>');
+
+    // insert the message
+    var single_message = $(
+        Template['message_' + yt].replace('{message}', message)
+    ).appendTo(message_container.find('ul'));
+
+    // set the message time
+    var msgtime = single_message.find('.imjs-msg-time');
+    if(!time)
+        time = new Date();
+
+    if(typeof time != 'string')
+        time = dateFormat(time, msgtime.html());
+
+    msgtime.html(time);
+
+    var msglog = chatbox.find('.imjs-msglog');
+    msglog[0].scrollTop = msglog[0].scrollHeight;
+
+    return {
+        replace_last: !new_container,
+        html: jQuery('<div>').append(message_container.clone()).html()
+    };
+};
+
+AjaxIM.prototype._scrollers = function() {};
+
 AjaxIM.init = function(options) {
     if(!AjaxIM.client)
         AjaxIM.client = new AjaxIM(options);
 
     return AjaxIM.client;
 };
+
+AjaxIM.debug = true;
+function _dbg(msg) {
+    if(AjaxIM.debug && window.console) console.log(msg);
+}

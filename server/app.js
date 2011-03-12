@@ -10,7 +10,7 @@ var http = require('http'),
             'intro.js',
             'cookies.js', 'dateformat.js', 'json.js',
             'md5.js', 'store.js', 'xxtea.js',
-            'templates.js', 'im.js',
+            'templates.js', 'im.js', 'l10n.js',
             'outro.js'
         ]
     },
