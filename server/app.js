@@ -6,16 +6,24 @@ var http = require('http'),
     uglifyjs,
     o_ = require('./libs/utils'),
     client = {
-        'im.js': [
-            'intro.js',
-            'cookies.js', 'dateformat.js', 'json.js',
-            'md5.js', 'store.js', 'xxtea.js',
-            'templates.js', 'im.js', 'l10n.js',
-            'outro.js'
-        ]
+        'im.js': {
+            folder: 'js',
+            files: [
+                'intro.js',
+                'cookies.js', 'dateformat.js', 'json.js',
+                'autogrow.js', 'md5.js', 'store.js',
+                'xxtea.js', 'templates.js', 'im.js',
+                'l10n.js', 'outro.js'
+            ],
+        },
+        'theme.css': {
+            folder: 'themes/default',
+            files: ['theme.css']
+        }
     },
     contentTypes = {
-        js: 'text/javascript'
+        js: 'text/javascript',
+        css: 'text/css'
     },
     _clientFiles = {},
     server, socket;
@@ -46,9 +54,11 @@ socket.on('connection', function(client) {
 // compile client javascript
 for(var file in client) {
     var fileData = "";
-    for(var i = 0, fl = client[file].length; i < fl; i++)
+    for(var i = 0, fl = client[file].files.length; i < fl; i++)
         fileData += fs.readFileSync(
-                        __dirname + '/../client/js/' + client[file][i],
+                        __dirname + '/../client/'
+                                  + client[file].folder + '/'
+                                  + client[file].files[i],
                         'utf8'
                     );
     var ext = file.split('.').pop();

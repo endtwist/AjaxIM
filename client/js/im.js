@@ -4,7 +4,7 @@ AjaxIM = function(options) {
             _defaults = {
                 host: 'localhost',
                 port: 8000,
-                theme: 'themes/default'
+                theme: true
             };
 
         this.settings = $.extend(_defaults, options);
@@ -12,18 +12,23 @@ AjaxIM = function(options) {
                                     {port: this.settings.port});
 
         // Load & wire up the chat bar HTML
-        _dbg(Template.bar);
         var IM = $('<div id="AjaxIM"></div>')
                     .appendTo('body')
-                    .css('display', 'none');
-        $(Template.bar).appendTo(IM);
+                    .css('display', 'none')
+                    .append($(Template.bar));
 
         if(this.settings.theme) {
             if(typeof document.createStyleSheet == 'function')
-                document.createStyleSheet(this.settings.theme + '/theme.css');
+                document.createStyleSheet('http://'
+                                          + this.settings.host
+                                          + ':' + this.settings.port
+                                          + '/theme.css');
             else
                 $('body').append('<link rel="stylesheet" href="' +
-                    this.settings.theme + '/theme.css" />');
+                    'http://'
+                    + this.settings.host
+                    + ':' + this.settings.port
+                    + '/theme.css" />');
         }
 
         this.friends = {};
@@ -118,19 +123,7 @@ AjaxIM.prototype._wiring = function() {
                           obj.val());
             }
 
-            var obj = $(this);
-            obj.val('');
-            obj.height(obj.data('height'));
-        })
-        .live('keypress', function(e) {
-            var obj = $(this),
-                scrollHeight = this.scrollHeight;
-
-            if(!($.browser.msie && $.browser.opera))
-                obj.height(0);
-
-            if(scrollHeight > obj.height() || scrollHeight < obj.height())
-                obj.height(scrollHeight);
+            $(this).val('').change();
         });
 
     // Focus the text input when a chatbox message log is clicked
@@ -149,10 +142,6 @@ AjaxIM.prototype._wiring = function() {
         }
 
         chatbox.find('.imjs-input').focus();
-        if(!(input = chatbox.find('.imjs-input')).data('height')) {
-            // store the height for resizing later
-            input.data('height', input.height());
-        }
     });
 
     // Setup and hide the scrollers
@@ -266,7 +255,7 @@ AjaxIM.prototype._wiring = function() {
         self.status('online', '');
 
         // Reconnect
-        self._storage();
+        self._restore();
     });
 
     // Allow tabs to be activated and closed
@@ -329,21 +318,23 @@ AjaxIM.prototype._wiring = function() {
     $('#imjs-friends-panel').css('display', 'none');
 };
 
-AjaxIM.prototype._storage = function() {
+AjaxIM.prototype._restore = function() {
     var self = this,
         chatstore = Tea.decrypt(store.get('chats') || '', this.username),
         friends = Tea.decrypt(store.get('friends') || '', this.username);
-    _dbg(friends)
+
     try {
         this.chatstore = JSON.parse(chatstore);
     } catch(e) {
         this.chatstore = {};
+        store.set('chats', '');
     }
 
     try {
         friends = JSON.parse(friends);
     } catch(e) {
         friends = {};
+        store.set('friends', '');
     }
 
     if(friends) {
@@ -387,7 +378,7 @@ AjaxIM.prototype._storage = function() {
     header.html(header.html().replace('{username}', this.username));
 };
 
-AjaxIM.prototype._clearSession = function() {
+AjaxIM.prototype._kill = function() {
     var last_user = store.get('user');
     $.each(['friends', 'activeTab', 'chats', 'status', 'connected'],
            function(i, key) {
@@ -434,7 +425,7 @@ AjaxIM.prototype._message = function(msg) {
                     setTimeout(function() { self._showReconnect(); }, 0);
                     return;
                 } else {
-                    this._storage();
+                    this._restore();
                 }
 
                 $('#imjs-friends').attr('class', 'imjs-available');
@@ -588,18 +579,6 @@ AjaxIM.prototype.activateTab = function(tab) {
     }
 
     if(chatbox) {
-        if((input = chatbox.find('.imjs-input')).length &&
-            !input.data('height')) {
-            if(!($.browser.msie && $.browser.opera)) input.height(0);
-            if(input[0].scrollHeight > input.height() ||
-               input[0].scrollHeight < input.height()) {
-                input.height(input[0].scrollHeight);
-            }
-
-            // store the height for resizing later
-            input.data('height', input.height());
-        }
-
         try {
             var msglog = chatbox.find('.imjs-msglog');
             msglog[0].scrollTop = msglog[0].scrollHeight;
@@ -635,6 +614,9 @@ AjaxIM.prototype.createChatbox = function(username, contents) {
         var chatbox = tab.find('.imjs-chatbox');
 
         chatbox.attr('id', chatbox_id);
+        
+        // setup the textarea to autogrow
+        chatbox.find('.imjs-input').autogrow();
 
         // remove default items from the message log
         var message_log = chatbox.find('.imjs-msglog').empty();
