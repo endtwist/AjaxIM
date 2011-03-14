@@ -457,6 +457,9 @@ AjaxIM.prototype._message = function(msg) {
     }
 };
 
+AjaxIM.prototype._disconnected = function() {
+};
+
 AjaxIM.prototype.addFriend = function(username, status, group) {
     var group_id = 'imjs-group-' + md5.hex(group);
 
@@ -743,7 +746,56 @@ AjaxIM.prototype._addMessage = function(yt, chatbox, username, message, time) {
     };
 };
 
-AjaxIM.prototype._scrollers = function() {};
+AjaxIM.prototype._scrollers = function() {
+    var needScrollers = false;
+    $('#imjs-scroll-left').nextAll('.imjs-tab')
+    .filter(function() {
+        return $(this).data('state') != 'closed';
+    })
+    .each(function(i, tab) {
+        tab = $(tab).css('display', '');
+
+        var tab_pos = tab.position();
+        if(tab_pos.top >= $('#imjs-bar').height() ||
+           tab_pos.left < 0 ||
+           tab_pos.right > $(document).width()) {
+            $('.imjs-scroll').css('display', '');
+            tab.css('display', 'none');
+            needScrollers = true;
+        }
+    });
+
+    if(!needScrollers) {
+        $('.imjs-scroll').css('display', 'none');
+    }
+
+    if($('#imjs-scroll-left').css('display') != 'none' &&
+        $('#imjs-scroll-right').position().top >= $('#imjs-bar').height()) {
+        $('#imjs-bar li.imjs-tab:visible').slice(-1).css('display', 'none');
+    }
+
+    if($('#imjs-bar li.imjs-tab:visible').length) {
+        while($('.imjs-selected').css('display') == 'none')
+            $('#imjs-scroll-right').click();
+    }
+
+    var hiddenRight = $('#imjs-bar li.imjs-tab:visible').slice(-1)
+        .nextAll('#imjs-bar li.imjs-tab:hidden')
+        .not('.imjs-default')
+        .filter(function() {
+            return $(this).data('state') != 'closed'
+        }).length;
+
+    var hiddenLeft = $('#imjs-bar li.imjs-tab:visible').eq(0)
+        .prevAll('#imjs-bar li.imjs-tab:hidden')
+        .not('.imjs-default')
+        .filter(function() {
+            return $(this).data('state') != 'closed'
+        }).length;
+
+    $('#imjs-scroll-left').html(hiddenLeft);
+    $('#imjs-scroll-right').html(hiddenRight);
+};
 
 AjaxIM.init = function(options) {
     if(!AjaxIM.client)

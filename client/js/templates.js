@@ -24,6 +24,7 @@ var Template = {
             '</li>' +
             '<li id="imjs-reconnect"><span class="imjs-tab-text">&#8635;</span></li>' +
             '<li id="imjs-scroll-left" class="imjs-scroll">{count}</li>' +
+            '<li id="imjs-scroll-right" class="imjs-scroll">{count}</li>' +
         '</ul>',
      tab:
         '<li class="imjs-tab">' +
