@@ -14,8 +14,7 @@ AjaxIM = function(options) {
         // Load & wire up the chat bar HTML
         var IM = $('<div id="AjaxIM"></div>')
                     .appendTo('body')
-                    .css('display', 'none')
-                    .append($(Template.bar));
+                    .css('display', 'none');
 
         if(this.settings.theme) {
             if(typeof document.createStyleSheet == 'function')
@@ -48,12 +47,12 @@ AjaxIM = function(options) {
                 self._scrollers();
             } catch(e) {}
         });
-        //this._scrollers();
 
         this.socket.connect();
         this.socket.on('connect', function() { self._connected(); });
         this.socket.on('message', function(msg) { self._message(msg); });
         this.socket.on('disconnect', function() { self._disconnected(); });
+        this.socket.on('connect_failed', function() { self._disconnected(); });
     } else {
         return AjaxIM.init(options);
     }
@@ -65,7 +64,7 @@ AjaxIM.prototype._store = function(key, value) {
         this.user[key] = value;
         store.set('user', this.user);
     } else if(this.username.length) {
-            store.set(key, Tea.encrypt(JSON.stringify(value), this.username));
+        store.set(key, Tea.encrypt(JSON.stringify(value), this.username));
     }
 };
 
@@ -144,8 +143,7 @@ AjaxIM.prototype._wiring = function() {
         chatbox.find('.imjs-input').focus();
     });
 
-    // Setup and hide the scrollers
-    $('.imjs-scroll').css('display', 'none');
+    // Setup the scrollers
     $('#imjs-scroll-right').live('click', function() {
         var hiddenTab = $(this)
             .prevAll('#imjs-bar li.imjs-tab:hidden')
@@ -230,32 +228,16 @@ AjaxIM.prototype._wiring = function() {
                 }, 250);
             };
         })());
-    $(this).bind('changeStatusSuccessful changeStatusFailed', function() {
+    $(this).bind('statusChanged', function() {
         $('#imjs-away-message-text').removeClass('imjs-loading');
     });
 
     // Setup reconnect button
     $('#imjs-reconnect').live('click', function() {
-        self._store('offline', false);
         $('#imjs-reconnect').hide();
         $('.imjs-input').attr('disabled', false);
 
-        // Restore status to available
-        $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
-        $('#imjs-button-available').addClass('imjs-toggled');
-        $(self.statuses).each(function() {
-            $('#imjs-friends').removeClass('imjs-' + this);
-        });
-        $('#imjs-friends').addClass('imjs-available');
-        $('#imjs-away-message-text, #imjs-away-message-text-arrow')
-            .css('display', 'none');
-
-        // Set status
-        self._store('status', ['online', '']);
-        self.status('online', '');
-
-        // Reconnect
-        self._restore();
+        self.socket.connect();
     });
 
     // Allow tabs to be activated and closed
@@ -283,13 +265,13 @@ AjaxIM.prototype._wiring = function() {
     });
 
     $('#imjs-friends')
-        .data('state', 'minimized')
-        .click(function(e) {
+        .live('click', function(e) {
             if(!$(this).hasClass('imjs-not-connected') &&
                 e.target.id != 'imjs-friends-panel' &&
                 !$(e.target).parents('#imjs-friends-panel').length)
                 self.activateTab.call(self, $(this));
         })
+        /*
         .mouseenter(function() {
             if($(this).hasClass('imjs-not-connected')) {
                 $('.imjs-tooltip')
@@ -314,8 +296,12 @@ AjaxIM.prototype._wiring = function() {
                 $('.imjs-tooltip').css('display', '');
             }
         });
+        */
+};
 
-    $('#imjs-friends-panel').css('display', 'none');
+AjaxIM.prototype._setup = function() {
+    $('.imjs-scroll, #imjs-friends-panel').css('display', 'none');
+    $('#imjs-friends').data('state', 'minimized');
 };
 
 AjaxIM.prototype._restore = function() {
@@ -338,8 +324,8 @@ AjaxIM.prototype._restore = function() {
     }
 
     if(friends) {
-        $.each(friends, function(friend, status) {
-            self.addFriend(friend, status, 'Friends');
+        $.each(friends, function(friend, info) {
+            self.addFriend(friend, info.status || 'offline', info.group || 'Friends');
         });
 
         $('#imjs-friends').removeClass('imjs-not-connected')
@@ -417,8 +403,13 @@ AjaxIM.prototype._message = function(msg) {
 
                 this.username = msg.username;
 
-                $('#AjaxIM').show();
+                $('#AjaxIM').html('').append($(Template.bar)).show();
+                this._setup();
+
+                // a run-once-per-page-load function
                 this._wiring();
+                this._wiring = function(){};
+
                 if(this.user.offline == true) {
                     var self = this;
                     this.socket.disconnect();
@@ -428,14 +419,13 @@ AjaxIM.prototype._message = function(msg) {
                     this._restore();
                 }
 
-                $('#imjs-friends').attr('class', 'imjs-available');
+                $('#imjs-friends').attr('class', 'imjs-online');
                 
                 if(msg.friends) {
                     $.each(msg.friends, function(friend, status) {
                         self.addFriend(friend, status, 'Friends');
                     });
-                    this._store('friends', msg.friends);
-                    this.friends = msg.friends;
+                    this._store('friends', this.friends);
                 }
 
                 // Set username in Friends list
@@ -445,19 +435,87 @@ AjaxIM.prototype._message = function(msg) {
                 // Set status available
                 $('#imjs-away-message-text, #imjs-away-message-text-arrow').hide();
                 $('#imjs-status-panel .imjs-button').removeClass('imjs-toggled');
-                $('#imjs-button-available').addClass('imjs-toggled');
+                $('#imjs-button-online').addClass('imjs-toggled');
             }
         break;
 
         case 'IM':
+            if(!msg['from']) return;
+            
+            if(!this.chats[msg.from])
+                this.createChatbox(msg.from);
+            
+            this._storeChat(
+                msg.from,
+                this._addMessage('them', this.chats[msg.from], msg.from, msg.message)
+            );
         break;
 
         case 'STATUS':
+            if(!msg['username']) return;
+
+            this._friendUpdate(msg.username, msg.status);
+            this._store('friends', this.friends);
         break;
     }
 };
 
 AjaxIM.prototype._disconnected = function() {
+    $('#imjs-friends')
+        .addClass('imjs-not-connected');
+    if($('#imjs-friends').hasClass('imjs-selected'))
+        this.activateTab($('#imjs-friends'));
+    $('.imjs-input').attr('disabled', true);
+    $('#imjs-reconnect').show();
+};
+
+AjaxIM.prototype.friendsListNoop = function() {
+    if($(this).hasClass('imjs-not-connected'))
+        return false;
+};
+
+AjaxIM.prototype.send = function(username, message) {
+    if(!message) return;
+    var self = this;
+
+    if(this.chats[username]) {
+        // possibly add a datestamp
+        this._storeChat(username, this._addDateStamp(this.chats[username]));
+        this._storeChat(username,
+                        this._addMessage('you', this.chats[username],
+                                         this.username, message));
+    }
+
+    this.socket.send({
+        type: 'IM',
+        to: username,
+        message: message
+    });
+    
+    $(this).trigger('messageSent', [username, message]);
+};
+
+AjaxIM.prototype._statuses = ['offline', 'online', 'away'];
+AjaxIM.prototype.status = function(value, message) {
+    var self = this;
+
+    // update status icon(s)
+    if(this._statuses.indexOf(value) == -1)
+        return;
+
+    // check if selected before writing over the class!
+    $(this._statuses).each(function() {
+        $('#imjs-friends').removeClass('imjs-' + this);
+    });
+    $('#imjs-friends').addClass('imjs-' + value);
+    
+    this.socket.send({
+        type: 'STATUS',
+        status: value,
+        status_msg: message
+    });
+
+    $(this).trigger('statusChanged', [value, message]);
 };
 
 AjaxIM.prototype.addFriend = function(username, status, group) {
@@ -503,6 +561,51 @@ AjaxIM.prototype._updateFriendCount = function() {
         if(f.status != 'offline') friendsLength++;
     });
     $('#imjs-friends .imjs-tab-text span span').html(friendsLength);
+};
+
+AjaxIM.prototype._friendUpdate = function(username, status, statusMessage) {
+    if(this.chats[username]) {
+        var tab = this.chats[username].parents('.imjs-tab');
+        var tab_class = 'imjs-tab';
+        if(tab.data('state') == 'active') tab_class += ' imjs-selected';
+        tab_class += ' imjs-' + status;
+
+        tab.attr('class', tab_class);
+
+        // display the status in the chatbox
+        var date_stamp =
+            $('.imjs-tab.imjs-default .imjs-chatbox .imjs-msglog .imjs-date').clone();
+
+        var date_stamp_time = date_stamp.find('.imjs-msg-time');
+        if(date_stamp_time.length)
+            date_stamp_time.html(dateFormat(date_stamp_time.html()));
+
+        var date_stamp_date = date_stamp.find('.imjs-date-date').html(
+            AjaxIM.l10n[
+                'chat' + status.slice(0, 1).toUpperCase() + status.slice(1)
+            ].replace(/%s/g, username));
+
+        var msglog = this.chats[username].find('.imjs-msglog');
+        date_stamp.appendTo(msglog);
+        msglog[0].scrollTop = msglog[0].scrollHeight;
+    }
+
+    if(this.friends[username]) {
+        var friend_id = 'imjs-friend-' + md5.hex(username + 'Friends');
+        $('#' + friend_id).attr('class', 'imjs-friend imjs-' + status);
+        $('#' + friend_id).find('.imjs-friend-status')
+                          .html(statusMessage);
+
+        if(status == 'offline') {
+            $('#' + friend_id + ':visible').slideUp();
+            $('#' + friend_id + ':hidden').hide();
+        } else if(!$('#' + friend_id + ':visible').length) {
+            $('#' + friend_id).slideDown();
+        }
+
+        this.friends[username].status = status;
+        this._updateFriendCount();
+    }
 };
 
 AjaxIM.prototype.addTab = function(label, action, closable) {

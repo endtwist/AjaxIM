@@ -142,18 +142,18 @@ iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12P4//8/AAX+Av7czFnnAAAA
                 color: #ff0000;
             }
 
-        li.imjs-msg-a, li.imjs-msg-b {
+        li.imjs-msg-you, li.imjs-msg-them {
             display: block;
             padding: 3px 5px 3px 8px;
             border-top: 1px dotted #bfbfbf;
         }
 
-            li.imjs-msg-b > span {
+            li.imjs-msg-them > span {
                 color: #ff0000;
                 font-weight: 700;
             }
 
-            li.imjs-msg-a > span {
+            li.imjs-msg-you > span {
                 color: #0099ff;
                 font-weight: 700;
             }
@@ -178,7 +178,7 @@ iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12P4//8/AAX+Av7czFnnAAAA
             color: #bcbcbc;
         }
     
-        li.imjs-msg-a ul p, li.imjs-msg-b ul p, li.imjs-date ul p {
+        li.imjs-msg-you ul p, li.imjs-msg-them ul p, li.imjs-date ul p {
             margin: 0;
         }
     /* [end] Message Log Messages */
@@ -487,11 +487,11 @@ div#imjs-status-panel > a.imjs-button {
         color: #df9b00;
     }
     
-    div#imjs-status-panel > a#imjs-button-available {
+    div#imjs-status-panel > a#imjs-button-online {
         margin-left: 12px;
     }
     
-        div#imjs-status-panel > a#imjs-button-available span {
+        div#imjs-status-panel > a#imjs-button-online span {
             color: #00cc00;
         }
     

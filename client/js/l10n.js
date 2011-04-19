@@ -10,7 +10,7 @@ AjaxIM.l10n = {
     ],
 
     chatOffline: '%s signed off.',
-    chatAvailable: '%s became available.',
+    chatOnline: '%s became available.',
     chatAway: '%s went away.',
 
     notConnected: 'You are currently not connected or the server is not available. ' +

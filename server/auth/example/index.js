@@ -8,7 +8,7 @@ ExampleAuth.prototype.authenticate = function(client, msg, callback) {
 };
 
 ExampleAuth.prototype.friends = function(client, res, callback) {
-    callback(['username1', 'username2', 'username3']);
+    callback(['username0', 'username1', 'username2', 'username3']);
 };
 
 var instance = new ExampleAuth();

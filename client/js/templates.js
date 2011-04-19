@@ -11,7 +11,7 @@ var Template = {
                     '<div id="imjs-status-panel">' +
                         '<textarea id="imjs-away-message-text"></textarea>' +
                         '<div id="imjs-away-message-text-arrow"></div>' +
-                        '<a href="#" id="imjs-button-available" class="imjs-button"><span>&bull;</span> Available</a>' +
+                        '<a href="#" id="imjs-button-online" class="imjs-button"><span>&bull;</span> Available</a>' +
                         '<a href="#" id="imjs-button-away" class="imjs-button"><span>&bull;</span> Away</a>' +
                         '<a href="#" id="imjs-button-offline" class="imjs-button"><span>&bull;</span> Offline</a>' +
                     '</div>' +

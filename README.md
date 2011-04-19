@@ -20,17 +20,18 @@ community experience.
 ## Installation
 
 Install `Node.js`:
-    wget http://nodejs.org/dist/node-v0.2.5.tar.gz
-    tar xzf node-v0.2.5.tar.gz
-    cd node-v0.2.5
+
+    wget http://nodejs.org/dist/node-latest.tar.gz
+    tar xzf node-latest.tar.gz
+    cd node-latest
     ./configure
     make
     make install
 
-Install Node Package Manager (`npm`):
-    See instructions at http://github.com/isaacs/npm.
+Install Node Package Manager (`npm`): see instructions on the [npm](http://github.com/isaacs/npm) page.
 
-Install `Socket.io` (included automatically):
+Install `Socket.io`:
+
     npm install socket-io
 
 That's it!
@@ -43,8 +44,9 @@ That's it!
 
 ## Node Compatibility
 
-The `master` branch of Ajax IM is compatible with node --version:
-    v0.4.1
+The `socket-io` branch of Ajax IM is compatible with node --version:
+
+    v0.4.6
 
 ## Contributing
 

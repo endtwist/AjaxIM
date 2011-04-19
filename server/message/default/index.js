@@ -74,11 +74,11 @@ MessageHandler.prototype._auth = function(client, message) {
 }
 
 MessageHandler.prototype._im = function(client, to, message) {
-    var sender = this.session_handler.get('client', client),
+    var sender = this.session_store.get('client', client.sessionId),
         recipient;
     
-    if(session) {
-        recipient = this.session_handler.get('username', to);
+    if(sender) {
+        recipient = this.session_store.get('username', to);
         
         if(recipient) {
             recipient.client.send({
@@ -97,7 +97,7 @@ MessageHandler.prototype._im = function(client, to, message) {
 };
 
 MessageHandler.prototype._status = function(client, status, status_msg) {
-    var session = this.session_handler.get('client', client),
+    var session = this.session_store.get('client', client.sessionId),
         friend;
     
     if(['online', 'away', 'offline'].indexOf(status) != -1) {
