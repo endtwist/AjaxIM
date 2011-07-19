@@ -54,8 +54,8 @@ try {
 
 var app = express.createServer(
     express.methodOverride(),
-    express.cookieDecoder(),
-    express.bodyDecoder(),
+    express.cookieParser(),
+    express.bodyParser(),
     require('./middleware/im')({
         maxAge: 15 * 60 * 1000,
         reapInterval: 60 * 1000,
@@ -79,7 +79,7 @@ app.configure('development', function() {
 
     app.use(express.logger());
     app.use('/dev', express.router(require('./dev/app')));
-    app.use(express.staticProvider(
+    app.use(express.static(
                 require('path').join(__dirname, '../client')));
     app.use(express.errorHandler({dumpExceptions: true, showStack: true}));
 });
