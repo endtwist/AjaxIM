@@ -1,3 +1,7 @@
+## This project is no longer under active development and is unsupported.
+(Also it doesn't work with the latest Node.js.)
+
+
 # Ajax IM
 
 ## What is Ajax IM?
