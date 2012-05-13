@@ -8,7 +8,7 @@ o_.merge(global, require('./settings'));
 try { o_.merge(global, require('./settings.local')); } catch(e) {}
 
 try {
-    var daemon = require('./libs/daemon/daemon'),
+    var daemon = require('daemon'),
         start = function() {
             daemon.init({
                 lock: PID_FILE,
