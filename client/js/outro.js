@@ -1,2 +1,2 @@
-
+$(function() { AjaxIM.init(); });
 })(jQuery || $);

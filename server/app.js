@@ -1,135 +1,98 @@
 #!/usr/bin/env node
-var sys = require('sys'),
-    express = require('express'),
-    packages = require('./libs/packages'),
-    o_ = require('./libs/utils');
+var http = require('http'),
+    url = require('url'),
+    fs = require('fs'),
+    io = require('socket.io'),
+    uglifyjs,
+    o_ = require('./libs/utils'),
+    client = {
+        'im.js': {
+            folder: 'js',
+            files: [
+                'intro.js',
+                'cookies.js', 'dateformat.js', 'json.js',
+                'autogrow.js', 'md5.js', 'store.js',
+                'xxtea.js', 'templates.js', 'im.js',
+                'l10n.js', 'outro.js'
+            ],
+        },
+        'theme.css': {
+            folder: 'themes/default',
+            files: ['theme.css']
+        }
+    },
+    contentTypes = {
+        js: 'text/javascript',
+        css: 'text/css'
+    },
+    _clientFiles = {},
+    server, socket;
+try { var uglifyjs = require('uglify-js'); } catch(e) {}
 
 o_.merge(global, require('./settings'));
 try { o_.merge(global, require('./settings.local')); } catch(e) {}
 
-try {
-    var daemon = require('daemon'),
-        start = function() {
-            daemon.init({
-                lock: PID_FILE,
-                stdin: '/dev/null',
-                stdout: LOG_FILE,
-                stderr: LOG_FILE,
-                umask: 0,
-                chroot: null,
-                chdir: '.'
-            });
+server = http.createServer(_serveClient);
+server.listen(APP_PORT, APP_HOST);
+
+var authHandler = require('./auth/' + AUTH_LIBRARY)(),
+    sessionStore = require('./session/' + SESSION_STORE)(),
+    msgHandler = require('./message/' + MESSAGE_HANDLER)(authHandler, sessionStore);
+
+// setup socket.io
+socket = io.listen(server);
+socket.on('connection', function(client) {
+    client.on('message', function(message) {
+        msgHandler.message(client, message);
+    });
+
+    client.on('disconnect', function() {
+        msgHandler.disconnect(client, SESSION_TIMEOUT);
+    });
+});
+
+// compile client javascript
+for(var file in client) {
+    var fileData = "";
+    for(var i = 0, fl = client[file].files.length; i < fl; i++)
+        fileData += fs.readFileSync(
+                        __dirname + '/../client/'
+                                  + client[file].folder + '/'
+                                  + client[file].files[i],
+                        'utf8'
+                    );
+    var ext = file.split('.').pop();
+    /*
+    // breaks on xxtea library?
+    if(ext == 'js' && uglifyjs) {
+        // if uglify-js is installed, let's compress
+        fileData = uglifyjs.parser.parse(fileData);
+        fileData = uglifyjs.uglify.ast_mangle(fileData);
+        fileData = uglifyjs.uglify.ast_squeeze(fileData);
+        fileData = uglifyjs.uglify.gen_code(fileData);
+    }
+    */
+    _clientFiles[file] = {
+        headers: {
+            'Content-Length': fileData.length,
+            'Content-Type': contentTypes[ext]
+            // Should use ETag
         },
-        stop = function() {
-            process.kill(parseInt(require('fs').readFileSync(PID_FILE)));
-        };
+        content: fileData,
+        encoding: 'utf8'
+    };
+};
 
-    switch(process.argv[2]) {
-        case 'stop':
-            stop();
-            process.exit(0);
-        break;
+// serve client javascript
+function _serveClient(req, res) {
+    var path = url.parse(req.url).pathname, 
+        file = path.substr(1);
 
-        case 'start':
-            if(process.argv[3])
-                process.env.EXPRESS_ENV = process.argv[3];
-            start();
-        break;
-
-        case 'restart':
-            stop();
-            start();
-            process.exit(0);
-        break;
-
-        case 'help':
-            sys.puts('Usage: node app.js [start|stop|restart]');
-            process.exit(0);
-        break;
+    if(req.method == 'GET' && file in _clientFiles) {
+        res.writeHead(200, _clientFiles[file].headers);
+        res.end(_clientFiles[file].content, _clientFiles[file].encoding);
+    } else {
+        res.writeHead(404);
+        res.end('404');
     }
-} catch(e) {
-    sys.puts('Daemon library not found! Please compile ' +
-             './libs/daemon/daemon.node if you would like to use it.');
 }
-
-var app = express.createServer(
-    express.methodOverride(),
-    express.cookieParser(),
-    express.bodyParser(),
-    require('./middleware/im')({
-        maxAge: 15 * 60 * 1000,
-        reapInterval: 60 * 1000,
-        authentication: require('./libs/authentication/' + AUTH_LIBRARY)
-    })
-);
-
-app.set('root', __dirname);
-
-app.configure('development', function() {
-    app.set('view engine', 'jade');
-    app.set('views', __dirname + '/dev/views');
-
-    app.stack.unshift({
-        route: '/dev',
-        handle: function(req, res, next) {
-            req.dev = true;
-            next();
-        }
-    });
-
-    app.use(express.logger());
-    app.use('/dev', express.router(require('./dev/app')));
-    app.use(express.static(
-                require('path').join(__dirname, '../client')));
-    app.use(express.errorHandler({dumpExceptions: true, showStack: true}));
-});
-
-app.listen(APP_PORT, APP_HOST);
-
-// Listener endpoint; handled in middleware
-app.get('/listen', function(){});
-
-app.post('/message', function(req, res) {
-    res.find(req.body['to'], function(user) {
-        if(!user)
-            return res.send(new packages.Error('not online'));
-
-        res.message(user, new packages.Message(
-            req.session.data('username'),
-            req.body.body
-        ));
-    });
-});
-
-app.post('/message/typing', function(req, res) {
-    if(~packages.TYPING_STATES.indexOf('typing' + req.body['state'])) {
-        res.find(req.body['to'], function(user) {
-            if(user) {
-                res.message(user, new packages.Status(
-                    req.session.data('username'),
-                    'typing' + req.body.state
-                ));
-            }
-
-            // Typing updates do not receive confirmations,
-            // as they are not important enough.
-            res.send('');
-        });
-    } else {
-        res.send(new packages.Error('invalid state'));
-    }
-});
-
-app.post('/status', function(req, res) {
-    if(~packages.STATUSES.indexOf(req.body['status'])) {
-        res.status(req.body.status, req.body.message);
-        res.send(new packages.Success('status updated'));
-    } else {
-        res.send(new packages.Error('invalid status'));
-    }
-});
-
-app.post('/signoff', function(req, res) {
-    res.signOff();
-    res.send(new packages.Success('goodbye'));
-});

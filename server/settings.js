@@ -7,18 +7,25 @@
 // === Host and Port ===
 //
 // Define the host and port that Ajax IM will run on.
+//
+// Note: Setting APP_HOST to null will run the server on port 8000 for any
+// hostname!
 APP_HOST = 'localhost';
 APP_PORT = 8000;
 
-// === Authentication Library ===
-//
-// This is the library (from libs/authenticate/) that we will use to
-// authenticate a user signing in. The value should be the name of the file
-// without the '.js' part. 'index' is the default library.
-AUTH_LIBRARY = 'default';
+// Document me!
+AUTH_LIBRARY = 'example';
+SESSION_STORE = 'memory';
+MESSAGE_HANDLER = 'default';
+
+// Document me!
+SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 // === Daemon ===
 //
 // Define where the PID and log files will be deposited when run as a daemon.
+/*
+// Broken! Removed for the time being.
 PID_FILE = '/tmp/ajaxim.pid';
 LOG_FILE = '/var/run/ajaxim.log';
+*/
