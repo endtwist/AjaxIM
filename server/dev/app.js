@@ -9,7 +9,7 @@ module.exports = function(app) {
 
     app.get('/cookie', function(req, res) {
         res.send('cookie set', {
-            'Set-Cookie': utils.serializeCookie('sessionid', utils.uid(),
+            'Set-Cookie': utils.serializeCookie('sessionid', utils.uid(24),
                                                 {path: '/'})
         });
     });
