@@ -516,8 +516,8 @@ $.extend(AjaxIM.prototype, {
                     .attr('id', user_id)
                     .data('friend', username)
                     .appendTo(group_item.find('ul'));
-            if(status[0] == 'offline')
-                user_item.hide();
+//            if(status[0] == 'offline')
+//                user_item.hide();
             user_item.html(
                 user_item.html()
                          .replace('{username}', username)
