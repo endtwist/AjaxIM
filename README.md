@@ -1,7 +1,3 @@
-## This project is no longer under active development and is unsupported.
-(Also it doesn't work with the latest Node.js.)
-
-
 # Ajax IM
 
 ## What is Ajax IM?
@@ -24,9 +20,9 @@ community experience.
 ## Installation
 
 Install `Node.js`:
-    wget http://nodejs.org/dist/node-v0.2.5.tar.gz
-    tar xzf node-v0.2.5.tar.gz
-    cd node-v0.2.5
+    wget http://nodejs.org/dist/v0.8.9/node-v0.8.9-linux-x86.tar.gz
+    tar xzf node-v0.8.9-linux-x86.tar.gz
+    cd node-v0.8.9
     ./configure
     make
     make install
@@ -34,8 +30,10 @@ Install `Node.js`:
 Install Node Package Manager (`npm`):
     See instructions at http://github.com/isaacs/npm.
 
-Install `Express.js` and `Connect` (included automatically):
+Install `Express.js`, `Connect` and `Cookie`:
     npm install express
+    npm install connect
+    npm install cookie
 
 Compile the daemon add-on if you plan on letting the server daemonize itself:
     cd server/libs/daemon
@@ -86,7 +84,7 @@ That's it!
 ## Node Compatibility
 
 The `master` branch of Ajax IM is compatible with node --version:
-    v0.2.5
+    v0.8.9
 
 ## Contributing
 
@@ -224,6 +222,7 @@ Methods:
 
 (The MIT License)
 
+Copyright (c) 2012 [Daniel Howard] (http://www.svexpertise.com)
 Copyright (c) 2010 [Joshua Gross](http://www.unwieldy.net)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
