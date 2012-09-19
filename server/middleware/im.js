@@ -8,13 +8,14 @@ module.exports = function setupHub(options) {
 
     return function session(req, res, next) {
         req.sessionStore = store;
-        req.sessionID = req.cookies[options.authentication.cookie];
 
         if(!req.cookies) {
-            next(new Error('session requires cookieDecoder to work properly'));
+            next(new Error('session requires cookieParser to work properly'));
             return;
         }
-        
+
+        req.sessionID = req.cookies[options.authentication.cookie];
+
         if(req.dev) {
             next();
             return;
@@ -56,7 +57,9 @@ module.exports = function setupHub(options) {
                 };
                 res.signOff = function() { store.signOff(req.sessionID); };
 
-                next();
+                if(url.parse(req.url).pathname !== '/listen') {
+                    next();
+                }
             });
         } else {
             next(new Error(JSON.stringify({
