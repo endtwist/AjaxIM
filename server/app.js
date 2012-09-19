@@ -52,20 +52,20 @@ try {
              './libs/daemon/daemon.node if you would like to use it.');
 }
 
-var app = express.createServer(
-    express.methodOverride(),
-    express.cookieDecoder(),
-    express.bodyDecoder(),
-    require('./middleware/im')({
-        maxAge: 15 * 60 * 1000,
-        reapInterval: 60 * 1000,
-        authentication: require('./libs/authentication/' + AUTH_LIBRARY)
-    })
-);
+var app = express();
+//app.set('env', 'development');
+app.use(express.methodOverride());
+app.use(express.cookieParser());
+app.use(express.bodyParser());
+app.use(require('./middleware/im')({
+   maxAge: 15 * 60 * 1000,
+   reapInterval: 60 * 1000,
+   authentication: require('./libs/authentication/' + AUTH_LIBRARY)
+}));
 
 app.set('root', __dirname);
 
-app.configure('development', function() {
+if ('development' == app.get('env')) {
     app.set('view engine', 'jade');
     app.set('views', __dirname + '/dev/views');
 
@@ -78,11 +78,11 @@ app.configure('development', function() {
     });
 
     app.use(express.logger());
-    app.use('/dev', express.router(require('./dev/app')));
-    app.use(express.staticProvider(
+    require('./dev/app')('/dev', app);
+    app.use(express.static(
                 require('path').join(__dirname, '../client')));
     app.use(express.errorHandler({dumpExceptions: true, showStack: true}));
-});
+}
 
 app.listen(APP_PORT, APP_HOST);
 
