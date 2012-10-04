@@ -3,6 +3,7 @@ var store = (function(){
 	var api = {},
 		win = window,
 		doc = win.document,
+		sessionStorageName = 'sessionStorage',
 		localStorageName = 'localStorage',
 		globalStorageName = 'globalStorage',
 		storage
@@ -20,7 +21,14 @@ var store = (function(){
 		return JSON.parse(value)
 	}
 
-	if (localStorageName in win && win[localStorageName]) {
+	if (sessionStorageName in win && win[sessionStorageName]) {
+		storage = win[sessionStorageName]
+		api.set = function(key, val) { storage[key] = serialize(val) }
+		api.get = function(key) { return deserialize(storage[key]) }
+		api.remove = function(key) { delete storage[key] }
+		api.clear = function() { storage.clear() }
+
+	} else if (localStorageName in win && win[localStorageName]) {
 		storage = win[localStorageName]
 		api.set = function(key, val) { storage[key] = serialize(val) }
 		api.get = function(key) { return deserialize(storage[key]) }
