@@ -379,8 +379,14 @@ $.extend(AjaxIM.prototype, {
             this.actions.listen,
             {},
             function(response) {
-                if(response)
+                if($.isArray(response)) {
+                    $.each(response, function(key, value) {
+                        self._parseMessage(value);
+                    });
+                }
+                else if($.isPlainObject(response)) {
                     self._parseMessage(response);
+                }
 
                 setTimeout(function() { self.listen(); }, 0);
             },
