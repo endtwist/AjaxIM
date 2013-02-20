@@ -31,7 +31,7 @@ var cookies = {
             while (c.charAt(0) == ' ') c = c.substring(1, c.length);
             if (c.indexOf(nameEQ) == 0) {
               var cval = decodeURIComponent(c.substring(nameEQ.length, c.length));
-              return JSON.parse(cval);
+              try { return JSON.parse(cval); } catch (e) { return cval; }
             }
         }
         return null;
