@@ -4855,15 +4855,15 @@ jQuery.extend({
 				success();
 				complete();
 				// Garbage collect
-				window[ jsonp ] = undefined;
+//				window[ jsonp ] = undefined;
+//
+//				try {
+//					delete window[ jsonp ];
+//				} catch(e) {}
 
-				try {
-					delete window[ jsonp ];
-				} catch(e) {}
-
-				if ( head ) {
-					head.removeChild( script );
-				}
+//				if ( head ) {
+//					head.removeChild( script );
+//				}
 			};
 		}
 

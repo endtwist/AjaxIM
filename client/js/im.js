@@ -1387,20 +1387,22 @@ AjaxIM.request = function(url, type, data, successFunc, failureFunc) {
     if(typeof failureFunc != 'function')
         failureFunc = function(){};
 
+    var jsonp = (url.substring(0, 1) !== '/');
+    data['sessionid'] = cookies.get('sessionid');
     $.ajax({
         url: url,
         data: data,
-        dataType: 'json',
+        dataType: jsonp? 'jsonp': 'json',
         type: type,
         cache: false,
         timeout: 299000,
         success: function(json, textStatus, xhr) {
-            if('status' in xhr && xhr.status == '0') return;
+            if(!jsonp && 'status' in xhr && xhr.status == '0') return;
             _dbg(json);
             successFunc(json);
         },
         complete: function(xhr, textStatus) {
-            if(~errorTypes.indexOf(textStatus) || xhr.status == '0')
+            if(!jsonp && (~errorTypes.indexOf(textStatus) || xhr.status == '0'))
                 failureFunc(textStatus);
         }
     });

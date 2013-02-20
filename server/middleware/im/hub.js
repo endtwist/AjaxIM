@@ -56,7 +56,7 @@ Hub.prototype.get = function(req, fn) {
     } else {
         this.auth.authenticate(req, o_.bind(function(data) {
             if(data) {
-                var session = new User(req.sessionID, data);
+                var session = new User(req, data);
                 this.set(req.sessionID, session);
 
                 this.auth.friends(req, data, o_.bind(function(friends) {

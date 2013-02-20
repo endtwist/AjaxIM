@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script type="text/javascript">
+function uid(n){
+   var chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', out='';
+   for(var c=0; c < n; c++){
+      out += chars.substr(0|Math.random() * chars.length, 1);
+   }
+   return out;
+}
+document.cookie = "sessionid="+uid(40)+"; path=/";
+</script>
+</head>
+<body>
+cookie set
+</body>
+</html>

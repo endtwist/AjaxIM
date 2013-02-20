@@ -2,8 +2,9 @@ var events = require('events'),
     packages = require('../../libs/packages'),
     o_ = require('../../libs/utils');
 
-var User = module.exports = function(id, data) {
-    this.id = id;
+var User = module.exports = function(req, data) {
+    this.req = req;
+    this.id = req.sessionID;
     this.connection = null;
     this.listeners = [];
     this.message_queue = [];
@@ -60,6 +61,10 @@ User.prototype.send = function(code, message, callback) {
     this._send('listener', code, message, callback);
 };
 
+User.prototype.addCallback = function(message) {
+    return ((typeof this.req.jsonpCallback) != 'undefined')? this.req.jsonpCallback+'('+message+');': message;
+};
+
 User.prototype._send = function(type, code, message, callback) {
     if(!message && typeof code != 'number') {
         callback = message;
@@ -72,10 +77,11 @@ User.prototype._send = function(type, code, message, callback) {
 
     if(type == 'connection' && this.connection) {
         this.connection.writeHead(code || 200, {
-            'Content-Type': 'application/json',
-            'Content-Length': message.length
+//            'Content-Type': 'application/json',
+            'Content-Type': 'application/javascript',
+            'Content-Length': this.addCallback(message).length
         });
-        this.connection.end(message);
+        this.connection.end(this.addCallback(message));
     } else {
         if(!this.listeners.length)
             return this.message_queue.push(arguments);
@@ -84,10 +90,11 @@ User.prototype._send = function(type, code, message, callback) {
         this.listeners = [];
         while(conn = cx.shift()) {
             conn.writeHead(code || 200, {
-                'Content-Type': 'application/json',
-                'Content-Length': message.length
+//                'Content-Type': 'application/json',
+                'Content-Type': 'application/javascript',
+                'Content-Length': this.addCallback(message).length
             });
-            conn.end(message);
+            conn.end(this.addCallback(message));
         }
         if(callback) callback();
     }
