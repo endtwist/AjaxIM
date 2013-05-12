@@ -20,6 +20,7 @@ community experience.
 ## Installation
 
 Install `Node.js`:
+
     wget http://nodejs.org/dist/v0.8.9/node-v0.8.9-linux-x86.tar.gz
     tar xzf node-v0.8.9-linux-x86.tar.gz
     cd node-v0.8.9
@@ -28,14 +29,17 @@ Install `Node.js`:
     make install
 
 Install Node Package Manager (`npm`):
+
     See instructions at http://github.com/isaacs/npm.
 
 Install `Express.js`, `Connect` and `Cookie`:
+
     npm install express
     npm install connect
     npm install cookie
 
 Compile the daemon add-on if you plan on letting the server daemonize itself:
+
     cd server/libs/daemon
     node-waf configure build
     cp build/default/daemon.node .
@@ -47,17 +51,21 @@ If you want to test Ajax IM as a standalone app for development, you will need
 to install [`Jade`](http://github.com/visionmedia/jade) as well.
 
 To install `Jade`:
+
     npm install jade
 
 ## Starting up the server
 
 Starting the server in _development_ mode is as simple as:
+
     node server/app.js
 
 To start the server in _production_ mode:
+
     EXPRESS_ENV=production node server/app.js
 
 To start the server as a _daemon_ in _production_ mode:
+
     node server/app.js start production
 
 ## Testing it out
@@ -68,9 +76,11 @@ assuming that you have left all default configuration options. If not, please
 replace the host/port values with the correct ones.
 
 To get started, first initialize a session cookie by going to:
+
     http://localhost:8000/dev/cookie
 
 Then head over to the development page that will initialize the client:
+
     http://localhost:8000/dev/
 
 That's it!
@@ -84,6 +94,7 @@ That's it!
 ## Node Compatibility
 
 The `master` branch of Ajax IM is compatible with node --version:
+
     v0.8.9
 
 ## Contributing
@@ -105,6 +116,7 @@ be accepted.
 * Never bump the version
 
 No whitespace between keys and values:
+
     {foo: 'bar'}
     // good
     
@@ -112,6 +124,7 @@ No whitespace between keys and values:
     // bad
 
 Hash formatting:
+
     {foo: 'bar', baz: 'taz'}
     // good
     
@@ -131,6 +144,7 @@ Hash formatting:
     // bad
 
 Chained methods:
+
     str
         .strip
         .replace(...)
@@ -150,6 +164,7 @@ Chained methods:
     // bad
 
 Single quotes over double quotes, unless double quotes make sense:
+
     'hello'
     // good
     
@@ -160,6 +175,7 @@ Single quotes over double quotes, unless double quotes make sense:
     // bad
 
 Ternary expressions are fine, but cannot be nested and must be formatted as:
+
     foo = (a ? b : c);
     // good
     
@@ -175,6 +191,7 @@ Ternary expressions are fine, but cannot be nested and must be formatted as:
     // bad
 
 Use braces for conditionals, unless conditionals are single statements:
+
     if(foo) {
         bar();
         baz();
@@ -191,6 +208,7 @@ Use braces for conditionals, unless conditionals are single statements:
     // bad
 
 Closures:
+
     function() {
     }
     // good
@@ -205,6 +223,7 @@ Closures:
     // bad
 
 Methods:
+
     foo.bar = function() {
     }
     // good
