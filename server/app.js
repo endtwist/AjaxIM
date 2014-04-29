@@ -54,9 +54,9 @@ try {
 
 var app = express();
 //app.set('env', 'development');
-app.use(express.methodOverride());
-app.use(express.cookieParser());
-app.use(express.bodyParser());
+app.use(require('method-override')());
+app.use(require('cookie-parser')());;
+app.use(require('body-parser')());;
 app.use(require('./middleware/im')({
    maxAge: 15 * 60 * 1000,
    reapInterval: 60 * 1000,
@@ -66,22 +66,20 @@ app.use(require('./middleware/im')({
 app.set('root', __dirname);
 
 if ('development' == app.get('env')) {
-    app.set('view engine', 'jade');
     app.set('views', __dirname + '/dev/views');
-
-    app.stack.unshift({
-        route: '/dev',
-        handle: function(req, res, next) {
-            req.dev = true;
-            next();
-        }
+    app.set('view engine', 'jade');
+    
+    app.use(function(req, res, next) {
+        req.dev = true;
+        next();
     });
+    app._router.stack.unshift(app._router.stack.pop());
 
-    app.use(express.logger());
+    app.use(require("morgan")());
     require('./dev/app')('/dev', app);
     app.use(express.static(
                 require('path').join(__dirname, '../client')));
-    app.use(express.errorHandler({dumpExceptions: true, showStack: true}));
+    app.use(require('express-error-handler')({dumpExceptions: true, showStack: true}));
 }
 
 app.listen(APP_PORT, APP_HOST);
