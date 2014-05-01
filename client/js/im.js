@@ -75,24 +75,26 @@ AjaxIM = function(options, actions) {
         }
 
         // Allow a chatbox to be minimized
-        $('.imjs-chatbox').live('click', function(e) {
+        $(document).on('click', '.imjs-chatbox', function(e) {
             e.preventDefault();
             return false;
         });
 
-        $('.imjs-chatbox .imjs-minimize').live('click', function() {
+        $(document).on('click', '.imjs-chatbox .imjs-minimize', function() {
             $(this).parents('.imjs-selected').click();
         });
 
         // Setup message sending for all chatboxes
-        $('.imjs-chatbox .imjs-input').live('keydown', function(event) {
+        $(document).on('keydown', '.imjs-chatbox .imjs-input', function(event) {
             var obj = $(this);
-            if(event.keyCode == 13 && !($.browser.msie && $.browser.version < 8)) {
+//            if(event.keyCode == 13 && !($.browser.msie && $.browser.version < 8)) {
+            if(event.keyCode == 13) {
                 self.send(obj.parents('.imjs-chatbox').data('username'), obj.val());
             }
-        }).live('keyup', function(event) {
+        }).on('keyup', '.imjs-chatbox .imjs-input', function(event) {
             if(event.keyCode == 13) {
-                if($.browser.msie && $.browser.version < 8) {
+ //               if($.browser.msie && $.browser.version < 8) {
+                if(false) {
                     var obj = $(this);
                     self.send(obj.parents('.imjs-chatbox').data('username'), obj.val());
                 }
@@ -101,21 +103,22 @@ AjaxIM = function(options, actions) {
                 obj.val('');
                 obj.height(obj.data('height'));
             }
-        }).live('keypress', function(e) {
+        }).on('keypress', '.imjs-chatbox .imjs-input', function(e) {
             var obj = $(this);
-            if(!($.browser.msie && $.browser.opera)) obj.height(0);
+            obj.height(0);
+            if(true) obj.height(0);
             if(this.scrollHeight > obj.height() || this.scrollHeight < obj.height()) {
                 obj.height(this.scrollHeight);
             }
         });
 
-        $('.imjs-msglog').live('click', function() {
+        $(document).on('click', '.imjs-msglog', function() {
             var chatbox = $(this).parents('.imjs-chatbox');
             chatbox.find('.imjs-input').focus();
         });
 
         // Create a chatbox when a buddylist item is clicked
-        $('.imjs-friend').live('click', function() {
+        $(document).on('click', '.imjs-friend', function() {
             var chatbox = self._createChatbox($(this).data('friend'));
 
             if(chatbox.parents('.imjs-tab').data('state') != 'active') {
@@ -132,7 +135,7 @@ AjaxIM = function(options, actions) {
 
         // Setup and hide the scrollers
         $('.imjs-scroll').css('display', 'none');
-        $('#imjs-scroll-right').live('click', function() {
+        $(document).on('click', '#imjs-scroll-right', function() {
             var hiddenTab = $(this)
                 .prevAll('#imjs-bar li.imjs-tab:hidden')
                 .filter(function() {
@@ -153,7 +156,7 @@ AjaxIM = function(options, actions) {
 
             return false;
         });
-        $('#imjs-scroll-left').live('click', function() {
+        $(document).on('click', '#imjs-scroll-left', function() {
             var hiddenTab = $(this)
                 .nextAll('#imjs-bar li.imjs-tab:hidden')
                 .filter(function() {
@@ -176,7 +179,7 @@ AjaxIM = function(options, actions) {
         });
 
         // Setup status buttons
-        $('#imjs-status-panel .imjs-button').live('click', function() {
+        $(document).on('click', '#imjs-status-panel .imjs-button', function() {
             var status = this.id.split('-')[2];
 
             $('#imjs-away-message-text, #imjs-away-message-text-arrow').animate({
@@ -200,8 +203,8 @@ AjaxIM = function(options, actions) {
         });
         
         // Allow status message to be changed
-        $('#imjs-away-message-text')
-            .live('keyup', (function() {
+        $(document)
+            .on('keyup', '#imjs-away-message-text', (function() {
                 var msg_type_timer = null;
                 
                 return function() {
@@ -220,7 +223,7 @@ AjaxIM = function(options, actions) {
         });
         
         // Setup reconnect button
-        $('#imjs-reconnect').live('click', function() {
+        $(document).on('click', '#imjs-reconnect', function() {
             self.offline = false;
             store.remove(self.username + '-offline');
             $('#imjs-reconnect').hide();
@@ -1051,13 +1054,13 @@ $.extend(AjaxIM.prototype, {
         var self = this;
 
         // Set up your standard tab actions
-        $('.imjs-tab')
-            .live('click', function() {
+        $(document)
+            .on('click', '.imjs-tab', function() {
                 return self.activateTab.call(self, $(this));
             });
 
-        $('.imjs-tab .imjs-close')
-            .live('click', function() {
+        $(document)
+            .on('click', '.imjs-tab .imjs-close', function() {
                 return self.closeTab.call(self, $(this));
             });
 
@@ -1173,7 +1176,7 @@ $.extend(AjaxIM.prototype, {
         if(chatbox) {
             if((input = chatbox.find('.imjs-input')).length &&
                 !input.data('height')) {
-                if(!($.browser.msie && $.browser.opera)) input.height(0);
+                input.height(0);
                 if(input[0].scrollHeight > input.height() ||
                    input[0].scrollHeight < input.height()) {
                     input.height(input[0].scrollHeight);
