@@ -69,7 +69,7 @@ if ('development' == app.get('env')) {
     app.set('views', __dirname + '/dev/views');
     app.set('view engine', 'jade');
     
-    app.use(function(req, res, next) {
+    app.use('/dev', function(req, res, next) {
         req.dev = true;
         next();
     });
