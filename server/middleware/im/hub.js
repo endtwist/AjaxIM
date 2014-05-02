@@ -84,6 +84,7 @@ Hub.prototype.get = function(req, fn) {
                     this.set(req.sessionID, session);
                     fn(null, session);
                 }, this));
+                session.status(packages.STATUSES[0], '');
             } else {
                 fn();
             }
