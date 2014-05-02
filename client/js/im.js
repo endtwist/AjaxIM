@@ -47,10 +47,10 @@ AjaxIM = function(options, actions) {
         // requests rather than POST requests (such as how the Node.JS Ajax IM
         // server works).
         this.actions = $.extend({
-            listen: this.settings.pollServer + '/listen',
-            send: this.settings.pollServer + '/message',
-            status: this.settings.pollServer + '/status',
-            signoff: this.settings.pollServer + '/signoff'
+            listen: this.settings.pollServer + '/app/listen',
+            send: this.settings.pollServer + '/app/message',
+            status: this.settings.pollServer + '/app/status',
+            signoff: this.settings.pollServer + '/app/signoff'
         }, actions);
 
         // We load the theme dynamically based on the passed

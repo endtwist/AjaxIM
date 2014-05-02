@@ -69,12 +69,6 @@ if ('development' == app.get('env')) {
     app.set('views', __dirname + '/dev/views');
     app.set('view engine', 'jade');
     
-    app.use('/dev', function(req, res, next) {
-        req.dev = true;
-        next();
-    });
-    app._router.stack.unshift(app._router.stack.pop());
-
     app.use(require("morgan")());
     require('./dev/app')('/dev', app);
     app.use(express.static(
@@ -85,9 +79,9 @@ if ('development' == app.get('env')) {
 app.listen(APP_PORT, APP_HOST);
 
 // Listener endpoint; handled in middleware
-app.get('/listen', function(){});
+app.get('/app/listen', function(){});
 
-app.post('/message', function(req, res) {
+app.post('/app/message', function(req, res) {
     res.find(req.body['to'], function(user) {
         if(!user)
             return res.send(new packages.Error('not online'));
@@ -99,7 +93,7 @@ app.post('/message', function(req, res) {
     });
 });
 
-app.post('/message/typing', function(req, res) {
+app.post('/app/message/typing', function(req, res) {
     if(~packages.TYPING_STATES.indexOf('typing' + req.body['state'])) {
         res.find(req.body['to'], function(user) {
             if(user) {
@@ -118,7 +112,7 @@ app.post('/message/typing', function(req, res) {
     }
 });
 
-app.post('/status', function(req, res) {
+app.post('/app/status', function(req, res) {
     if(~packages.STATUSES.indexOf(req.body['status'])) {
         res.status(req.body.status, req.body.message);
         res.send(new packages.Success('status updated'));
@@ -127,7 +121,7 @@ app.post('/status', function(req, res) {
     }
 });
 
-app.post('/signoff', function(req, res) {
+app.post('/app/signoff', function(req, res) {
     res.signOff();
     res.send(new packages.Success('goodbye'));
 });

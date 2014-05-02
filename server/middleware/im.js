@@ -38,7 +38,7 @@ module.exports = function setupHub(options) {
         delete req.query.callback;
         delete req.body.callback;
 
-        if(req.dev) {
+        if(url.parse(req.url).pathname.substring(0, 5) !== '/app/') {
             next();
             return;
         }
@@ -58,7 +58,7 @@ module.exports = function setupHub(options) {
                 }
 
                 sess.touch();
-                if(url.parse(req.url).pathname === '/listen') {
+                if(url.parse(req.url).pathname === '/app/listen') {
                     req.connection.setTimeout(5 * 60 * 1000);
                     sess.listener(res);
                     store.set(req.sessionID, sess);
@@ -79,7 +79,7 @@ module.exports = function setupHub(options) {
                 };
                 res.signOff = function() { store.signOff(req.sessionID); };
 
-                if(url.parse(req.url).pathname !== '/listen') {
+                if(url.parse(req.url).pathname !== '/app/listen') {
                     next();
                 }
             });
