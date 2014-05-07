@@ -81,25 +81,25 @@ app.listen(APP_PORT, APP_HOST);
 // Listener endpoint; handled in middleware
 app.get('/app/listen', function(){});
 
-app.post('/app/message', function(req, res) {
-    res.find(req.body['to'], function(user) {
+app.use('/app/message', function(req, res) {
+    res.find(req.param('to'), function(user) {
         if(!user)
             return res.send(new packages.Error('not online'));
 
         res.message(user, new packages.Message(
             req.session.data('username'),
-            req.body.body
+            req.param('body')
         ));
     });
 });
 
-app.post('/app/message/typing', function(req, res) {
-    if(~packages.TYPING_STATES.indexOf('typing' + req.body['state'])) {
-        res.find(req.body['to'], function(user) {
+app.use('/app/message/typing', function(req, res) {
+    if(~packages.TYPING_STATES.indexOf('typing' + req.param('state'))) {
+        res.find(req.param('to'), function(user) {
             if(user) {
                 res.message(user, new packages.Status(
                     req.session.data('username'),
-                    'typing' + req.body.state
+                    'typing' + req.param('state')
                 ));
             }
 
@@ -112,16 +112,16 @@ app.post('/app/message/typing', function(req, res) {
     }
 });
 
-app.post('/app/status', function(req, res) {
-    if(~packages.STATUSES.indexOf(req.body['status'])) {
-        res.status(req.body.status, req.body.message);
+app.use('/app/status', function(req, res) {
+    if(~packages.STATUSES.indexOf(req.param('status'))) {
+        res.status(req.param('status'), req.param('message'));
         res.send(new packages.Success('status updated'));
     } else {
         res.send(new packages.Error('invalid status'));
     }
 });
 
-app.post('/app/signoff', function(req, res) {
+app.use('/app/signoff', function(req, res) {
     res.signOff();
     res.send(new packages.Success('goodbye'));
 });

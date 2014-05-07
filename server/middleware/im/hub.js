@@ -52,6 +52,9 @@ Hub.prototype.reap = function(ms) {
 
 Hub.prototype.get = function(req, fn) {
     if(this.sessions[req.sessionID]) {
+        if (!this.sessions[req.sessionID].req) {
+            this.sessions[req.sessionID].req = req;
+        }
         fn(null, this.sessions[req.sessionID]);
     } else {
         this.auth.authenticate(req, o_.bind(function(data) {

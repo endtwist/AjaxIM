@@ -1398,16 +1398,13 @@ AjaxIM.request = function(url, type, data, successFunc, failureFunc) {
         dataType: jsonp? 'jsonp': 'json',
         type: type,
         cache: false,
-        timeout: 299000,
-        success: function(json, textStatus, xhr) {
-            if(!jsonp && 'status' in xhr && xhr.status == '0') return;
-            _dbg(json);
-            successFunc(json);
-        },
-        complete: function(xhr, textStatus) {
-            if(!jsonp && (~errorTypes.indexOf(textStatus) || xhr.status == '0'))
-                failureFunc(textStatus);
-        }
+        timeout: 299000
+    }).done(function(data) {
+       _dbg(JSON.stringify(data));
+       successFunc(data);
+    }).fail(function(jqXHR, textStatus) {
+       _dbg(textStatus);
+       failureFunc(textStatus);
     });
 
     // This prevents Firefox from spinning indefinitely

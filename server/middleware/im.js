@@ -14,29 +14,22 @@ module.exports = function setupHub(options) {
             return;
         }
 
+        // move "fake" cookies from query or body (for JSONP)
         if (!(options.authentication.cookie in req.cookies)) {
-           if (options.authentication.cookie in req.query) {
-              req.cookies[options.authentication.cookie] = req.query[options.authentication.cookie];
-           } else if (options.authentication.cookie in req.body) {
-              req.cookies[options.authentication.cookie] = req.body[options.authentication.cookie];
+           if (req.param(options.authentication.cookie)) {
+              req.cookies[options.authentication.cookie] = req.param(options.authentication.cookie);
            }
         }
 
+        // move "fake" cookies from query or body (for JSONP)
         if (!('callback' in req.cookies)) {
-           if ('callback' in req.query) {
-              req.cookies.callback = req.query.callback;
-           } else if ('callback' in req.body) {
-              req.cookies.callback = req.body.callback;
+           if (req.param('callback')) {
+              req.cookies['callback'] = req.param('callback');
            }
         }
 
         req.sessionID = req.cookies[options.authentication.cookie];
         req.jsonpCallback = req.cookies.callback;
-
-        delete req.query[options.authentication.cookie];
-        delete req.body[options.authentication.cookie];
-        delete req.query.callback;
-        delete req.body.callback;
 
         if(url.parse(req.url).pathname.substring(0, 5) !== '/app/') {
             next();
