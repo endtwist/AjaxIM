@@ -1473,3 +1473,11 @@ AjaxIM.debug = true;
 function _dbg(msg) {
     if(AjaxIM.debug && window.console) console.log(msg);
 }
+
+function uid(n){
+   var chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', nn='';
+   for(var c=0; c < n; c++){
+      nn += chars.substr(0|Math.random() * chars.length, 1);
+   }
+   return nn;
+}

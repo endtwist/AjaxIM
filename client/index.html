@@ -11,6 +11,9 @@
 <script src="js/im.js" type="text/javascript"></script>
 <script type="text/javascript">
 $(function(){
+  if (!cookies.get('sessionid')) {
+    cookies.set('sessionid', uid(40));
+  }
   var u = window.location.href.split("/");
   var p = 8000; // Node.js port
   u = u[0]+"//"+u[2]+":"+p;

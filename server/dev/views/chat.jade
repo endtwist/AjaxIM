@@ -9,6 +9,7 @@ html(lang="en")
     script(src='/js/dateformat.js', type='text/javascript')
     script(src='/js/im.js', type='text/javascript')
     script(type='text/javascript').
-      $(function(){var im = AjaxIM.init({theme: "/themes/default"});});
+      $(function(){if (!cookies.get('sessionid')) cookies.set('sessionid', uid(40));
+      var im = AjaxIM.init({theme: "/themes/default"});});
   body.
     Hello.
