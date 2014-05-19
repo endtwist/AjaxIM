@@ -52,11 +52,14 @@ Hub.prototype.reap = function(ms) {
 
 Hub.prototype.get = function(req, fn) {
     if(this.sessions[req.sessionID]) {
+        if (!this.sessions[req.sessionID].req) {
+            this.sessions[req.sessionID].req = req;
+        }
         fn(null, this.sessions[req.sessionID]);
     } else {
         this.auth.authenticate(req, o_.bind(function(data) {
             if(data) {
-                var session = new User(req.sessionID, data);
+                var session = new User(req, data);
                 this.set(req.sessionID, session);
 
                 this.auth.friends(req, data, o_.bind(function(friends) {
@@ -84,6 +87,7 @@ Hub.prototype.get = function(req, fn) {
                     this.set(req.sessionID, session);
                     fn(null, session);
                 }, this));
+                session.status(packages.STATUSES[0], '');
             } else {
                 fn();
             }

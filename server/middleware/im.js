@@ -14,9 +14,24 @@ module.exports = function setupHub(options) {
             return;
         }
 
-        req.sessionID = req.cookies[options.authentication.cookie];
+        // move "fake" cookies from query or body (for JSONP)
+        if (!(options.authentication.cookie in req.cookies)) {
+           if (req.param(options.authentication.cookie)) {
+              req.cookies[options.authentication.cookie] = req.param(options.authentication.cookie);
+           }
+        }
 
-        if(req.dev) {
+        // move "fake" cookies from query or body (for JSONP)
+        if (!('callback' in req.cookies)) {
+           if (req.param('callback')) {
+              req.cookies['callback'] = req.param('callback');
+           }
+        }
+
+        req.sessionID = req.cookies[options.authentication.cookie];
+        req.jsonpCallback = req.cookies.callback;
+
+        if(url.parse(req.url).pathname.substring(0, 5) !== '/app/') {
             next();
             return;
         }
@@ -36,7 +51,7 @@ module.exports = function setupHub(options) {
                 }
 
                 sess.touch();
-                if(url.parse(req.url).pathname === '/listen') {
+                if(url.parse(req.url).pathname === '/app/listen') {
                     req.connection.setTimeout(5 * 60 * 1000);
                     sess.listener(res);
                     store.set(req.sessionID, sess);
@@ -57,7 +72,7 @@ module.exports = function setupHub(options) {
                 };
                 res.signOff = function() { store.signOff(req.sessionID); };
 
-                if(url.parse(req.url).pathname !== '/listen') {
+                if(url.parse(req.url).pathname !== '/app/listen') {
                     next();
                 }
             });
