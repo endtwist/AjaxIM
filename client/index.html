@@ -16,7 +16,9 @@ $(function(){
   }
   var u = window.location.href.split("/");
   var p = 8000; // Node.js port
-  u = u[0]+"//"+u[2]+":"+p;
+  u = u[0] + "//" + u[2];
+  u = u.split(':');
+  u = u[0] + ':' + u[1] + ':' + p;
   var im = AjaxIM.init({pollServer: u, theme: "themes/default"});
 });
 </script>
